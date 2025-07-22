@@ -1,6 +1,6 @@
-import { GrokTool } from "./client";
+import { JurikoTool } from "./client";
 
-export const GROK_TOOLS: GrokTool[] = [
+export const JURIKO_TOOLS: JurikoTool[] = [
   {
     type: "function",
     function: {

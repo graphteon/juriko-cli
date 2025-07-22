@@ -84,7 +84,6 @@ program
       // Set API keys from command line options if provided
       if (options.apiKey) {
         process.env.JURIKO_API_KEY = options.apiKey;
-        process.env.GROK_API_KEY = options.apiKey; // For backward compatibility
       }
 
       console.log("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");

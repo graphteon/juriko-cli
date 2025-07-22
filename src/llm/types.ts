@@ -69,10 +69,10 @@ export const PROVIDER_MODELS: ProviderModels = {
     { name: 'gpt-3.5-turbo', description: 'GPT-3.5 Turbo' },
   ],
   grok: [
-    { name: 'grok-4-latest', description: 'Grok-4 (Latest)' },
-    { name: 'grok-3-latest', description: 'Grok-3 (Latest)' },
-    { name: 'grok-3-fast', description: 'Grok-3 Fast' },
-    { name: 'grok-3-mini-fast', description: 'Grok-3 Mini Fast' },
+    { name: 'grok-4-latest', description: 'X.AI Grok-4 (Latest)' },
+    { name: 'grok-3-latest', description: 'X.AI Grok-3 (Latest)' },
+    { name: 'grok-3-fast', description: 'X.AI Grok-3 Fast' },
+    { name: 'grok-3-mini-fast', description: 'X.AI Grok-3 Mini Fast' },
   ],
 };
 

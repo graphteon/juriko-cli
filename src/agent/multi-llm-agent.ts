@@ -302,7 +302,7 @@ Current working directory: ${process.cwd()}`,
           // Add assistant message to conversation
           this.messages.push({
             role: "assistant",
-            content: assistantMessage.content || "",
+            content: assistantMessage.content || "Using tools to help you...",
             tool_calls: assistantMessage.tool_calls,
           });
 
@@ -349,7 +349,7 @@ Current working directory: ${process.cwd()}`,
           this.chatHistory.push(finalEntry);
           this.messages.push({
             role: "assistant",
-            content: assistantMessage.content || "",
+            content: assistantMessage.content || "I understand, but I don't have a specific response.",
           });
           newEntries.push(finalEntry);
           break; // Exit the loop

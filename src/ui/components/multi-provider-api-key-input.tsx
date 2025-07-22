@@ -37,7 +37,7 @@ export const MultiProviderApiKeyInput: React.FC<MultiProviderApiKeyInputProps> =
         };
       case 'grok':
         return {
-          name: 'Grok (X.AI)',
+          name: 'X.AI (Grok)',
           envVar: 'GROK_API_KEY',
           placeholder: 'xai-...',
           description: 'Get your API key from https://console.x.ai/',

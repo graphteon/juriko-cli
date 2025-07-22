@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat";
 
-export type GrokMessage = ChatCompletionMessageParam;
+export type JurikoMessage = ChatCompletionMessageParam;
 
-export interface GrokTool {
+export interface JurikoTool {
   type: "function";
   function: {
     name: string;
@@ -16,7 +16,7 @@ export interface GrokTool {
   };
 }
 
-export interface GrokToolCall {
+export interface JurikoToolCall {
   id: string;
   type: "function";
   function: {
@@ -34,18 +34,18 @@ export interface SearchOptions {
   search_parameters?: SearchParameters;
 }
 
-export interface GrokResponse {
+export interface JurikoResponse {
   choices: Array<{
     message: {
       role: string;
       content: string | null;
-      tool_calls?: GrokToolCall[];
+      tool_calls?: JurikoToolCall[];
     };
     finish_reason: string;
   }>;
 }
 
-export class GrokClient {
+export class JurikoClient {
   private client: OpenAI;
   private currentModel: string = "grok-3-latest";
 
@@ -69,11 +69,11 @@ export class GrokClient {
   }
 
   async chat(
-    messages: GrokMessage[],
-    tools?: GrokTool[],
+    messages: JurikoMessage[],
+    tools?: JurikoTool[],
     model?: string,
     searchOptions?: SearchOptions
-  ): Promise<GrokResponse> {
+  ): Promise<JurikoResponse> {
     try {
       const requestPayload: any = {
         model: model || this.currentModel,
@@ -93,15 +93,15 @@ export class GrokClient {
         requestPayload
       );
 
-      return response as GrokResponse;
+      return response as JurikoResponse;
     } catch (error: any) {
       throw new Error(`AI API error: ${error.message}`);
     }
   }
 
   async *chatStream(
-    messages: GrokMessage[],
-    tools?: GrokTool[],
+    messages: JurikoMessage[],
+    tools?: JurikoTool[],
     model?: string,
     searchOptions?: SearchOptions
   ): AsyncGenerator<any, void, unknown> {
@@ -136,8 +136,8 @@ export class GrokClient {
   async search(
     query: string,
     searchParameters?: SearchParameters
-  ): Promise<GrokResponse> {
-    const searchMessage: GrokMessage = {
+  ): Promise<JurikoResponse> {
+    const searchMessage: JurikoMessage = {
       role: "user",
       content: query,
     };

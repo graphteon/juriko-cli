@@ -15,6 +15,7 @@ import {
   saveApiKey 
 } from '../utils/user-settings';
 import chalk from 'chalk';
+import cfonts from 'cfonts';
 
 interface Props {
   agent?: MultiLLMAgent;
@@ -90,6 +91,31 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
 
     loadSettings();
   }, []);
+
+  // Show ASCII art banner and tips when app is ready
+  useEffect(() => {
+    if (appState === 'ready') {
+      console.clear();
+      cfonts.say("JURIKO", {
+        font: "3d",
+        align: "left",
+        colors: ["magenta", "gray"],
+        space: true,
+        maxLength: "0",
+        gradient: ["magenta", "cyan"],
+        independentGradient: false,
+        transitionGradient: true,
+        env: "node",
+      });
+
+      console.log("Tips for getting started:");
+      console.log("1. Ask questions, edit files, or run commands.");
+      console.log("2. Be specific for the best results.");
+      console.log("3. Create JURIKO.md files to customize your interactions with JURIKO.");
+      console.log("4. /help for more information.");
+      console.log("");
+    }
+  }, [appState]);
 
   const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string) => {
     try {
@@ -347,8 +373,8 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
           ))}
         </Box>
 
-        <Box>
-          <Text color="blue">$ </Text>
+        <Box borderStyle="round" borderColor="gray" paddingX={1} marginTop={1}>
+          <Text color="cyan">❯ </Text>
           <Text>
             {input}
             {!isProcessing && <Text color="white">█</Text>}
