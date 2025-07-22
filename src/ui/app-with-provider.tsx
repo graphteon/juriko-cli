@@ -4,15 +4,16 @@ import { MultiLLMAgent } from '../agent/multi-llm-agent';
 import { ToolResult } from '../types';
 import { ConfirmationService, ConfirmationOptions } from '../utils/confirmation-service';
 import ConfirmationDialog from './components/confirmation-dialog';
+import StatusBar from './components/status-bar';
 import { ProviderSelection } from './components/provider-selection';
 import { MultiProviderApiKeyInput } from './components/multi-provider-api-key-input';
 import { LLMProvider } from '../llm/types';
 import { LLMClient } from '../llm/client';
-import { 
-  loadUserSettings, 
-  updateProviderSettings, 
-  getApiKey, 
-  saveApiKey 
+import {
+  loadUserSettings,
+  updateProviderSettings,
+  getApiKey,
+  saveApiKey
 } from '../utils/user-settings';
 import chalk from 'chalk';
 import cfonts from 'cfonts';
@@ -336,51 +337,57 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
 
   if (appState === 'ready') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Box marginBottom={1}>
-          <Text bold color="cyan">
-            🔧 JURIKO CLI - Text Editor Agent
-          </Text>
-        </Box>
-        
-        <Box marginBottom={1}>
-          <Text color="green">
-            Provider: {selectedProvider?.toUpperCase()} | Model: {selectedModel}
-          </Text>
-        </Box>
-        
-        <Box flexDirection="column" marginBottom={1}>
-          <Text dimColor>
-            Available commands: view, str_replace, create, insert, undo_edit, bash, help
-          </Text>
-          <Text dimColor>
-            Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit
-          </Text>
-          <Text dimColor>
-            Press Ctrl+P to quickly switch provider/model
-          </Text>
-        </Box>
+      <Box flexDirection="column" height="100%">
+        <Box flexDirection="column" padding={1} flexGrow={1}>
+          <Box marginBottom={1}>
+            <Text bold color="cyan">
+              🔧 JURIKO CLI - Text Editor Agent
+            </Text>
+          </Box>
+          
+          <Box marginBottom={1}>
+            <Text color="green">
+              Provider: {selectedProvider?.toUpperCase()} | Model: {selectedModel}
+            </Text>
+          </Box>
+          
+          <Box flexDirection="column" marginBottom={1}>
+            <Text dimColor>
+              Available commands: view, str_replace, create, insert, undo_edit, bash, help
+            </Text>
+            <Text dimColor>
+              Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit
+            </Text>
+            <Text dimColor>
+              Press Ctrl+P to quickly switch provider/model
+            </Text>
+          </Box>
 
-        <Box flexDirection="column" marginBottom={1}>
-          {history.slice(-10).map((entry, index) => (
-            <Box key={index} flexDirection="column" marginBottom={1}>
-              <Box>
-                <Text color="blue">$ </Text>
-                <Text>{entry.command}</Text>
+          <Box flexDirection="column" marginBottom={1}>
+            {history.slice(-10).map((entry, index) => (
+              <Box key={index} flexDirection="column" marginBottom={1}>
+                <Box>
+                  <Text color="blue">$ </Text>
+                  <Text>{entry.command}</Text>
+                </Box>
+                {renderResult(entry.result)}
               </Box>
-              {renderResult(entry.result)}
-            </Box>
-          ))}
-        </Box>
+            ))}
+          </Box>
 
-        <Box borderStyle="round" borderColor="gray" paddingX={1} marginTop={1}>
-          <Text color="cyan">❯ </Text>
-          <Text>
-            {input}
-            {!isProcessing && <Text color="white">█</Text>}
-          </Text>
-          {isProcessing && <Text color="yellow"> (processing...)</Text>}
+          <Box borderStyle="round" borderColor="gray" paddingX={1} marginTop={1}>
+            <Text color="cyan">❯ </Text>
+            <Text>
+              {input}
+              {!isProcessing && <Text color="white">█</Text>}
+            </Text>
+            {isProcessing && <Text color="yellow"> (processing...)</Text>}
+          </Box>
         </Box>
+        
+        {selectedProvider && selectedModel && (
+          <StatusBar provider={selectedProvider} model={selectedModel} />
+        )}
       </Box>
     );
   }
