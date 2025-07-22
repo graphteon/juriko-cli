@@ -5,6 +5,7 @@ import { ToolResult } from '../types';
 import { ConfirmationService, ConfirmationOptions } from '../utils/confirmation-service';
 import ConfirmationDialog from './components/confirmation-dialog';
 import StatusBar from './components/status-bar';
+import StreamingChat from './components/streaming-chat';
 import { ProviderSelection } from './components/provider-selection';
 import { MultiProviderApiKeyInput } from './components/multi-provider-api-key-input';
 import { LLMProvider } from '../llm/types';
@@ -31,10 +32,8 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [agent, setAgent] = useState<MultiLLMAgent | undefined>(initialAgent);
   const [llmClient, setLlmClient] = useState<LLMClient | undefined>();
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
   
-  const [input, setInput] = useState('');
-  const [history, setHistory] = useState<Array<{ command: string; result: ToolResult }>>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
   const { exit } = useApp();
   
@@ -93,30 +92,35 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     loadSettings();
   }, []);
 
-  // Show ASCII art banner and tips when app is ready
+  // Show ASCII art banner and tips when app is ready (only once)
   useEffect(() => {
-    if (appState === 'ready') {
-      console.clear();
-      cfonts.say("JURIKO", {
-        font: "3d",
-        align: "left",
-        colors: ["magenta", "gray"],
-        space: true,
-        maxLength: "0",
-        gradient: ["magenta", "cyan"],
-        independentGradient: false,
-        transitionGradient: true,
-        env: "node",
-      });
+    if (appState === 'ready' && !hasShownWelcome) {
+      // Only clear console on first load, not after confirmation dialogs
+      if (!confirmationOptions) {
+        console.clear();
+        cfonts.say("JURIKO", {
+          font: "3d",
+          align: "left",
+          colors: ["magenta", "gray"],
+          space: true,
+          maxLength: "0",
+          gradient: ["magenta", "cyan"],
+          independentGradient: false,
+          transitionGradient: true,
+          env: "node",
+        });
 
-      console.log("Tips for getting started:");
-      console.log("1. Ask questions, edit files, or run commands.");
-      console.log("2. Be specific for the best results.");
-      console.log("3. Create JURIKO.md files to customize your interactions with JURIKO.");
-      console.log("4. /help for more information.");
-      console.log("");
+        console.log("Tips for getting started:");
+        console.log("1. Ask questions, edit files, or run commands.");
+        console.log("2. Be specific for the best results.");
+        console.log("3. Create JURIKO.md files to customize your interactions with JURIKO.");
+        console.log("4. /help for more information.");
+        console.log("");
+      }
+      
+      setHasShownWelcome(true);
     }
-  }, [appState]);
+  }, [appState, hasShownWelcome, confirmationOptions]);
 
   const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string) => {
     try {
@@ -194,95 +198,6 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     setAppState('provider-selection');
   };
 
-  useInput(async (inputChar: string, key: any) => {
-    // Only handle input when app is ready and no confirmation dialog
-    if (appState !== 'ready' || confirmationOptions) {
-      return;
-    }
-
-    if (key.ctrl && inputChar === 'c') {
-      exit();
-      return;
-    }
-
-    // Add shortcut to change provider/model
-    if (key.ctrl && inputChar === 'p') {
-      setAppState('provider-selection');
-      return;
-    }
-
-    if (key.return) {
-      if (input.trim() === 'exit' || input.trim() === 'quit') {
-        exit();
-        return;
-      }
-
-      if (input.trim() === 'provider' || input.trim() === 'switch') {
-        setAppState('provider-selection');
-        setInput('');
-        return;
-      }
-
-      if (input.trim() && agent) {
-        setIsProcessing(true);
-        try {
-          const entries = await agent.processUserMessage(input.trim());
-          // Convert chat entries to the expected format for history
-          const lastEntry = entries[entries.length - 1];
-          const result: ToolResult = {
-            success: lastEntry.type !== 'assistant' || !lastEntry.content.includes('error'),
-            output: lastEntry.content,
-            error: lastEntry.type === 'assistant' && lastEntry.content.includes('error') ? lastEntry.content : undefined
-          };
-          setHistory(prev => [...prev, { command: input.trim(), result }]);
-        } catch (error: any) {
-          const result: ToolResult = {
-            success: false,
-            error: error.message
-          };
-          setHistory(prev => [...prev, { command: input.trim(), result }]);
-        }
-        setInput('');
-        setIsProcessing(false);
-      }
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      setInput(prev => prev.slice(0, -1));
-      return;
-    }
-
-    if (inputChar && !key.ctrl && !key.meta) {
-      setInput(prev => prev + inputChar);
-    }
-  });
-
-  const renderResult = (result: ToolResult) => {
-    if (result.success) {
-      return (
-        <Box flexDirection="column" marginBottom={1}>
-          <Text color="green">✓ Success</Text>
-          {result.output && (
-            <Box marginLeft={2}>
-              <Text>{result.output}</Text>
-            </Box>
-          )}
-        </Box>
-      );
-    } else {
-      return (
-        <Box flexDirection="column" marginBottom={1}>
-          <Text color="red">✗ Error</Text>
-          {result.error && (
-            <Box marginLeft={2}>
-              <Text color="red">{result.error}</Text>
-            </Box>
-          )}
-        </Box>
-      );
-    }
-  };
 
   const handleConfirmation = (dontAskAgain?: boolean) => {
     confirmationService.confirmOperation(true, dontAskAgain);
@@ -335,54 +250,15 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     );
   }
 
-  if (appState === 'ready') {
+  if (appState === 'ready' && agent) {
     return (
       <Box flexDirection="column" height="100%">
-        <Box flexDirection="column" padding={1} flexGrow={1}>
-          <Box marginBottom={1}>
-            <Text bold color="cyan">
-              🔧 JURIKO CLI - Text Editor Agent
-            </Text>
-          </Box>
-          
-          <Box marginBottom={1}>
-            <Text color="green">
-              Provider: {selectedProvider?.toUpperCase()} | Model: {selectedModel}
-            </Text>
-          </Box>
-          
-          <Box flexDirection="column" marginBottom={1}>
-            <Text dimColor>
-              Available commands: view, str_replace, create, insert, undo_edit, bash, help
-            </Text>
-            <Text dimColor>
-              Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit
-            </Text>
-            <Text dimColor>
-              Press Ctrl+P to quickly switch provider/model
-            </Text>
-          </Box>
-
-          <Box flexDirection="column" marginBottom={1}>
-            {history.slice(-10).map((entry, index) => (
-              <Box key={index} flexDirection="column" marginBottom={1}>
-                <Box>
-                  <Text color="blue">$ </Text>
-                  <Text>{entry.command}</Text>
-                </Box>
-                {renderResult(entry.result)}
-              </Box>
-            ))}
-          </Box>
-
-          <Box borderStyle="round" borderColor="gray" paddingX={1} marginTop={1}>
-            <Text color="cyan">❯ </Text>
-            <Text>
-              {input}
-              {!isProcessing && <Text color="white">█</Text>}
-            </Text>
-            {isProcessing && <Text color="yellow"> (processing...)</Text>}
-          </Box>
+        <Box flexGrow={1}>
+          <StreamingChat
+            key="streaming-chat" // Add key to prevent re-mounting
+            agent={agent}
+            onProviderSwitch={() => setAppState('provider-selection')}
+          />
         </Box>
         
         {selectedProvider && selectedModel && (

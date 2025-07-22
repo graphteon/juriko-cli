@@ -15,7 +15,7 @@ export default function StatusBar({ provider, model }: StatusBarProps) {
     <Box
       width="100%"
       justifyContent="space-between"
-      paddingX={0.5}
+      paddingX={1}
       borderStyle="single"
       borderColor="gray"
     >
