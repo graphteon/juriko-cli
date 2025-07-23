@@ -153,30 +153,17 @@ export const JURIKO_TOOLS: JurikoTool[] = [
             items: {
               type: "object",
               properties: {
-                id: {
-                  type: "string",
+                index: {
+                  type: "number",
                   description: "ID of the todo item to update",
                 },
                 status: {
                   type: "string",
                   enum: ["pending", "in_progress", "completed"],
                   description: "New status for the todo item",
-                },
-                task: {
-                  type: "string",
-                  description: "New task description for the todo item",
-                },
-                content: {
-                  type: "string",
-                  description: "Alternative field for new todo description (use either content or task)",
-                },
-                priority: {
-                  type: "string",
-                  enum: ["high", "medium", "low"],
-                  description: "New priority for the todo item",
-                },
+                }
               },
-              required: ["id"],
+              required: ["index","status"],
             },
           },
         },

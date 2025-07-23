@@ -1,7 +1,7 @@
 import { ToolResult } from '../types';
 
 interface TodoItem {
-  id?: string; // Make ID optional - will be auto-generated if not provided
+  id?: number; // Make ID optional - will be auto-generated if not provided
   content?: string; // Support both content and task for backward compatibility
   task?: string;
   status: 'pending' | 'in_progress' | 'completed';
@@ -12,8 +12,8 @@ export class TodoTool {
   private todos: TodoItem[] = [];
   private nextId = 1;
 
-  private generateId(): string {
-    return `todo-${this.nextId++}`;
+  private generateId(): number {
+    return this.nextId++;
   }
 
   private getTaskContent(todo: TodoItem): string {
@@ -58,7 +58,7 @@ export class TodoTool {
       const checkbox = getCheckbox(todo.status);
       const statusColor = getStatusColor(todo.status);
       const strikethrough = todo.status === 'completed' ? '\x1b[9m' : '';
-      const indent = index === 0 ? '' : '  ';
+      const indent = '  ';
       
       output += `${indent}${statusColor}${strikethrough}${checkbox} ${this.getTaskContent(todo)}${reset}\n`;
     });
@@ -68,9 +68,6 @@ export class TodoTool {
 
   async createTodoList(todos: TodoItem[]): Promise<ToolResult> {
     try {
-      // Debug: Log the input todos for troubleshooting
-      console.log('CreateTodo received todos:', JSON.stringify(todos, null, 2));
-      
       // Process and validate todos
       const processedTodos: TodoItem[] = [];
       
@@ -82,9 +79,6 @@ export class TodoTool {
           ...todo,
           id: todo.id || this.generateId()
         };
-
-        // Debug: Log each processed todo
-        console.log(`Processing todo ${i + 1}:`, JSON.stringify(processedTodo, null, 2));
 
         // Validate required fields
         if (!this.getTaskContent(processedTodo)) {
@@ -136,7 +130,6 @@ export class TodoTool {
       }
 
       this.todos = processedTodos;
-      console.log('Successfully created todo list with', processedTodos.length, 'todos');
       
       return {
         success: true,
@@ -152,17 +145,17 @@ export class TodoTool {
     }
   }
 
-  async updateTodoList(updates: { id: string; status?: string; content?: string; task?: string; priority?: string }[]): Promise<ToolResult> {
+  async updateTodoList(updates: { index: number; status: string }[]): Promise<ToolResult> {
     try {
-      const updatedIds: string[] = [];
+      const updatedIds: number[] = [];
 
       for (const update of updates) {
-        const todoIndex = this.todos.findIndex(t => t.id === update.id);
+        const todoIndex = update.index;
         
         if (todoIndex === -1) {
           return {
             success: false,
-            error: `Todo with id ${update.id} not found`
+            error: `Todo with id ${update.index} not found`
           };
         }
 
@@ -175,19 +168,10 @@ export class TodoTool {
           };
         }
 
-        if (update.priority && !['high', 'medium', 'low'].includes(update.priority)) {
-          return {
-            success: false,
-            error: `Invalid priority: ${update.priority}. Must be high, medium, or low`
-          };
-        }
 
         if (update.status) todo.status = update.status as any;
-        if (update.content) todo.content = update.content;
-        if (update.task) todo.task = update.task;
-        if (update.priority) todo.priority = update.priority as any;
 
-        updatedIds.push(update.id);
+        updatedIds.push(update.index);
       }
 
       return {
