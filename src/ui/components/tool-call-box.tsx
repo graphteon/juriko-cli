@@ -44,9 +44,9 @@ const getToolArguments = (toolCall: LLMToolCall): string => {
       case 'bash':
         return args.command;
       case 'create_todo_list':
-        return `${JSON.stringify(args.todos) || args.todos}`;
+        return "";
       case 'update_todo_list':
-        return `${JSON.stringify(args.updates) || args.updates}`;
+        return "";
       default:
         // Safely stringify objects to avoid [object Object] display
         return Object.values(args).map(value =>
