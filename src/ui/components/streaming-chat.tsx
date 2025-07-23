@@ -4,6 +4,8 @@ import { MultiLLMAgent, ChatEntry } from '../../agent/multi-llm-agent';
 import { LLMToolCall } from '../../llm/types';
 import { ToolResult } from '../../types';
 import ToolCallBox from './tool-call-box';
+import { ConfirmationService, ConfirmationOptions } from '../../utils/confirmation-service';
+import ConfirmationDialog from './confirmation-dialog';
 
 interface StreamingChatProps {
   agent: MultiLLMAgent;
@@ -25,8 +27,11 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStreamingContent, setCurrentStreamingContent] = useState('');
   const [tokenCount, setTokenCount] = useState(0);
+  const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
   const { exit } = useApp();
   const isMountedRef = useRef(true);
+  
+  const confirmationService = ConfirmationService.getInstance();
 
   // Cleanup function to prevent memory leaks
   useEffect(() => {
@@ -35,8 +40,31 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
     };
   }, []);
 
+  // Handle confirmation requests
+  useEffect(() => {
+    const handleConfirmationRequest = (options: ConfirmationOptions) => {
+      setConfirmationOptions(options);
+    };
+
+    confirmationService.on('confirmation-requested', handleConfirmationRequest);
+
+    return () => {
+      confirmationService.off('confirmation-requested', handleConfirmationRequest);
+    };
+  }, [confirmationService]);
+
+  const handleConfirmation = (dontAskAgain?: boolean) => {
+    confirmationService.confirmOperation(true, dontAskAgain);
+    setConfirmationOptions(null);
+  };
+
+  const handleRejection = (feedback?: string) => {
+    confirmationService.rejectOperation(feedback);
+    setConfirmationOptions(null);
+  };
+
   useInput(async (inputChar: string, key: any) => {
-    if (!isMountedRef.current || isProcessing) return;
+    if (!isMountedRef.current || isProcessing || confirmationOptions) return;
 
     if (key.ctrl && inputChar === 'c') {
       if (isProcessing) {
@@ -223,6 +251,19 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
         return null;
     }
   };
+
+  // If confirmation dialog is active, show it instead of the chat
+  if (confirmationOptions) {
+    return (
+      <ConfirmationDialog
+        operation={confirmationOptions.operation}
+        filename={confirmationOptions.filename}
+        showVSCodeOpen={confirmationOptions.showVSCodeOpen}
+        onConfirm={handleConfirmation}
+        onReject={handleRejection}
+      />
+    );
+  }
 
   return (
     <Box flexDirection="column" height="100%" width="100%">

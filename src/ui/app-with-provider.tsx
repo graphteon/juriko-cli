@@ -34,22 +34,9 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
   
-  const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
   const { exit } = useApp();
   
   const confirmationService = ConfirmationService.getInstance();
-
-  useEffect(() => {
-    const handleConfirmationRequest = (options: ConfirmationOptions) => {
-      setConfirmationOptions(options);
-    };
-
-    confirmationService.on('confirmation-requested', handleConfirmationRequest);
-
-    return () => {
-      confirmationService.off('confirmation-requested', handleConfirmationRequest);
-    };
-  }, [confirmationService]);
 
   // Reset confirmation service session on app start
   useEffect(() => {
@@ -95,32 +82,29 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   // Show ASCII art banner and tips when app is ready (only once)
   useEffect(() => {
     if (appState === 'ready' && !hasShownWelcome) {
-      // Only clear console on first load, not after confirmation dialogs
-      if (!confirmationOptions) {
-        console.clear();
-        cfonts.say("#JURIKO", {
-          font: "block",
-          align: "left",
-          colors: ["magenta", "gray"],
-          space: true,
-          maxLength: "0",
-          gradient: ["magenta", "cyan"],
-          independentGradient: false,
-          transitionGradient: true,
-          env: "node",
-        });
+      console.clear();
+      cfonts.say("#JURIKO", {
+        font: "block",
+        align: "left",
+        colors: ["magenta", "gray"],
+        space: true,
+        maxLength: "0",
+        gradient: ["magenta", "cyan"],
+        independentGradient: false,
+        transitionGradient: true,
+        env: "node",
+      });
 
-        console.log("Tips for getting started:");
-        console.log("1. Ask questions, edit files, or run commands.");
-        console.log("2. Be specific for the best results.");
-        console.log("3. Create JURIKO.md files to customize your interactions with JURIKO.");
-        console.log("4. /help for more information.");
-        console.log("");
-      }
+      console.log("Tips for getting started:");
+      console.log("1. Ask questions, edit files, or run commands.");
+      console.log("2. Be specific for the best results.");
+      console.log("3. Create JURIKO.md files to customize your interactions with JURIKO.");
+      console.log("4. /help for more information.");
+      console.log("");
       
       setHasShownWelcome(true);
     }
-  }, [appState, hasShownWelcome, confirmationOptions]);
+  }, [appState, hasShownWelcome]);
 
   const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string) => {
     try {
@@ -199,27 +183,9 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   };
 
 
-  const handleConfirmation = (dontAskAgain?: boolean) => {
-    confirmationService.confirmOperation(true, dontAskAgain);
-    setConfirmationOptions(null);
-  };
 
-  const handleRejection = (feedback?: string) => {
-    confirmationService.rejectOperation(feedback);
-    setConfirmationOptions(null);
-  };
-
-  if (confirmationOptions) {
-    return (
-      <ConfirmationDialog
-        operation={confirmationOptions.operation}
-        filename={confirmationOptions.filename}
-        showVSCodeOpen={confirmationOptions.showVSCodeOpen}
-        onConfirm={handleConfirmation}
-        onReject={handleRejection}
-      />
-    );
-  }
+  // Remove the early return for confirmation dialog
+  // We'll handle it in the main render section
 
   if (appState === 'loading') {
     return (
