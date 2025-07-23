@@ -4,6 +4,7 @@ import { JurikoAgent } from "../../agent/juriko-agent";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { logger } from "../../utils/logger";
 
 interface ApiKeyInputProps {
   onApiKeySet: (agent: JurikoAgent) => void;
@@ -87,10 +88,10 @@ export default function ApiKeyInput({ onApiKeySet }: ApiKeyInputProps) {
         // Save settings
         fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), { mode: 0o600 });
         
-        console.log(`\n✅ API key saved to ~/.juriko/user-settings.json`);
+        logger.info(`\n✅ API key saved to ~/.juriko/user-settings.json`);
       } catch (error) {
-        console.log('\n⚠️ Could not save API key to settings file');
-        console.log('API key set for current session only');
+        logger.warn('\n⚠️ Could not save API key to settings file');
+        logger.warn('API key set for current session only');
       }
       
       onApiKeySet(agent);

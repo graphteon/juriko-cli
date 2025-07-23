@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { LLMProvider } from '../llm/types';
+import { logger } from './logger';
 
 export interface UserSettings {
   provider?: LLMProvider;
@@ -34,7 +35,7 @@ export async function loadUserSettings(): Promise<UserSettings> {
     
     return {};
   } catch (error) {
-    console.warn('Failed to load user settings:', error);
+    logger.warn('Failed to load user settings:', error);
     return {};
   }
 }
@@ -49,7 +50,7 @@ export async function saveUserSettings(settings: UserSettings): Promise<void> {
     
     await fs.writeJson(SETTINGS_FILE, mergedSettings, { spaces: 2 });
   } catch (error) {
-    console.error('Failed to save user settings:', error);
+    logger.error('Failed to save user settings:', error);
     throw error;
   }
 }

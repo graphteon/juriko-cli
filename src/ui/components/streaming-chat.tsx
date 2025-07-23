@@ -6,6 +6,7 @@ import { ToolResult } from '../../types';
 import ToolCallBox from './tool-call-box';
 import { ConfirmationService, ConfirmationOptions } from '../../utils/confirmation-service';
 import ConfirmationDialog from './confirmation-dialog';
+import { logger } from '../../utils/logger';
 
 interface StreamingChatProps {
   agent: MultiLLMAgent;
@@ -138,11 +139,11 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
       if (!isMountedRef.current) return;
       
       // Process each chat entry
-      console.log('Processing chat entries:', chatEntries.length);
+      logger.debug('Processing chat entries:', chatEntries.length);
       chatEntries.forEach((entry: ChatEntry, index: number) => {
         if (!isMountedRef.current) return;
         
-        console.log(`Entry ${index}:`, entry.type, entry.toolCalls?.length || 0, 'tool calls');
+        logger.debug(`Entry ${index}:`, entry.type, entry.toolCalls?.length || 0, 'tool calls');
         
         switch (entry.type) {
           case 'assistant':
@@ -153,7 +154,7 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
                 toolCalls: entry.toolCalls,
                 timestamp: entry.timestamp
               };
-              console.log('Adding tool calls message:', toolCallsMessage.toolCalls.length);
+              logger.debug('Adding tool calls message:', toolCallsMessage.toolCalls.length);
               if (isMountedRef.current) {
                 setMessages(prev => [...prev, toolCallsMessage]);
               }
@@ -174,7 +175,7 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
 
           case 'tool_result':
             if (entry.toolCall && entry.toolResult) {
-              console.log('Processing tool result for:', entry.toolCall.function.name);
+              logger.debug('Processing tool result for:', entry.toolCall.function.name);
               // Update the corresponding tool call with result
               if (isMountedRef.current) {
                 setMessages(prev => prev.map(msg => {

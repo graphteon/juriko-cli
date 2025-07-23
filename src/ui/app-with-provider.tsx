@@ -18,6 +18,7 @@ import {
 } from '../utils/user-settings';
 import chalk from 'chalk';
 import cfonts from 'cfonts';
+import { logger } from '../utils/logger';
 
 interface Props {
   agent?: MultiLLMAgent;
@@ -71,7 +72,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
           setAppState('provider-selection');
         }
       } catch (error) {
-        console.error('Failed to load settings:', error);
+        logger.error('Failed to load settings:', error);
         setAppState('provider-selection');
       }
     };
@@ -82,7 +83,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   // Show ASCII art banner and tips when app is ready (only once)
   useEffect(() => {
     if (appState === 'ready' && !hasShownWelcome) {
-      console.clear();
+      logger.clear();
       cfonts.say("#JURIKO", {
         font: "block",
         align: "left",
@@ -95,12 +96,12 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         env: "node",
       });
 
-      console.log("Tips for getting started:");
-      console.log("1. Ask questions, edit files, or run commands.");
-      console.log("2. Be specific for the best results.");
-      console.log("3. Create JURIKO.md files to customize your interactions with JURIKO.");
-      console.log("4. /help for more information.");
-      console.log("");
+      logger.info("Tips for getting started:");
+      logger.info("1. Ask questions, edit files, or run commands.");
+      logger.info("2. Be specific for the best results.");
+      logger.info("3. Create JURIKO.md files to customize your interactions with JURIKO.");
+      logger.info("4. /help for more information.");
+      logger.info("");
       
       setHasShownWelcome(true);
     }
@@ -125,7 +126,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         agent.setLLMClient(client);
       }
     } catch (error) {
-      console.error('Failed to initialize LLM client:', error);
+      logger.error('Failed to initialize LLM client:', error);
       throw error;
     }
   };
@@ -143,7 +144,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         await updateProviderSettings(provider, model);
         setAppState('ready');
       } catch (error) {
-        console.error('Failed to initialize with saved API key:', error);
+        logger.error('Failed to initialize with saved API key:', error);
         setNeedsApiKey(true);
         setAppState('api-key-input');
       }
@@ -155,7 +156,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
 
   const handleApiKeyInput = async (apiKey: string, saveKey: boolean) => {
     if (!selectedProvider || !selectedModel) {
-      console.error('Provider or model not selected');
+      logger.error('Provider or model not selected');
       return;
     }
 
@@ -169,7 +170,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
       await updateProviderSettings(selectedProvider, selectedModel);
       setAppState('ready');
     } catch (error) {
-      console.error('Failed to initialize with API key:', error);
+      logger.error('Failed to initialize with API key:', error);
       // Stay in API key input state to allow retry
     }
   };

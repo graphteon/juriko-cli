@@ -8,6 +8,7 @@ import AppWithProvider from "./ui/app-with-provider";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { logger } from "./utils/logger";
 
 // Load environment variables
 dotenv.config();
@@ -72,7 +73,7 @@ program
       try {
         process.chdir(options.directory);
       } catch (error: any) {
-        console.error(
+        logger.error(
           `Error changing directory to ${options.directory}:`,
           error.message
         );
@@ -86,11 +87,11 @@ program
         process.env.JURIKO_API_KEY = options.apiKey;
       }
 
-      console.log("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
+      logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
 
       render(React.createElement(AppWithProvider, {}));
     } catch (error: any) {
-      console.error("❌ Error initializing JURIKO CLI:", error.message);
+      logger.error("❌ Error initializing JURIKO CLI:", error.message);
       process.exit(1);
     }
   });
