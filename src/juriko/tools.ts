@@ -94,7 +94,7 @@ export const JURIKO_TOOLS: JurikoTool[] = [
     type: "function",
     function: {
       name: "create_todo_list",
-      description: "Create a new todo list for planning and tracking tasks",
+      description: "Create a new todo list for planning and tracking tasks. IDs will be auto-generated if not provided.",
       parameters: {
         type: "object",
         properties: {
@@ -106,11 +106,15 @@ export const JURIKO_TOOLS: JurikoTool[] = [
               properties: {
                 id: {
                   type: "string",
-                  description: "Unique identifier for the todo item",
+                  description: "Unique identifier for the todo item (optional - will be auto-generated if not provided)",
+                },
+                task: {
+                  type: "string",
+                  description: "Description of the task item",
                 },
                 content: {
                   type: "string",
-                  description: "Description of the todo item",
+                  description: "Alternative field for todo description (use either content or task)",
                 },
                 status: {
                   type: "string",
@@ -123,7 +127,11 @@ export const JURIKO_TOOLS: JurikoTool[] = [
                   description: "Priority level of the todo item",
                 },
               },
-              required: ["id", "content", "status", "priority"],
+              required: ["status", "priority"],
+              anyOf: [
+                { required: ["task"] },
+                { required: ["content"] }
+              ]
             },
           },
         },
@@ -154,9 +162,13 @@ export const JURIKO_TOOLS: JurikoTool[] = [
                   enum: ["pending", "in_progress", "completed"],
                   description: "New status for the todo item",
                 },
+                task: {
+                  type: "string",
+                  description: "New task description for the todo item",
+                },
                 content: {
                   type: "string",
-                  description: "New content for the todo item",
+                  description: "Alternative field for new todo description (use either content or task)",
                 },
                 priority: {
                   type: "string",
