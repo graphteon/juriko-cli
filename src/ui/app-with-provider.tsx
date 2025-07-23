@@ -98,8 +98,8 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
       // Only clear console on first load, not after confirmation dialogs
       if (!confirmationOptions) {
         console.clear();
-        cfonts.say("JURIKO", {
-          font: "3d",
+        cfonts.say("#JURIKO", {
+          font: "block",
           align: "left",
           colors: ["magenta", "gray"],
           space: true,

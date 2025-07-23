@@ -228,9 +228,9 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
     <Box flexDirection="column" height="100%" width="100%">
       <Box flexDirection="column" padding={1} flexGrow={1} width="100%">
         {/* Header */}
-        <Box marginBottom={1}>
+        {/*<Box marginBottom={1}>
           <Text bold color="cyan">🔧 JURIKO CLI - Text Editor Agent</Text>
-        </Box>
+        </Box>*/}
         
         <Box marginBottom={1}>
           <Text color="green">
