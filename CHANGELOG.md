@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.8] - 2025-07-24
+
+### Added
+- Added welcome image to project assets
+- Enhanced README with updated documentation
+
+### Changed
+- Improved tool-call-box component functionality
+- Updated package metadata and dependencies
+
+### Fixed
+- Minor UI improvements and bug fixes
+
 ## [0.0.7] - 2025-07-24
 
 ### Changed
