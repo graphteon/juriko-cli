@@ -362,7 +362,7 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
 
         {/* Messages */}
         <Box flexDirection="column" marginBottom={1} width="100%">
-          {messages.slice(-20).map(renderMessage)}
+          {messages.map(renderMessage)}
         </Box>
 
         {/* Input */}
