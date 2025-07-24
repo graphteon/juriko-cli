@@ -5,6 +5,7 @@ import { ToolResult } from "../types";
 import { EventEmitter } from "events";
 import { createTokenCounter, TokenCounter } from "../utils/token-counter";
 import { loadCustomInstructions } from "../utils/custom-instructions";
+import { mcpManager, mcpToolsIntegration } from "../mcp";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -44,6 +45,11 @@ export class JurikoAgent extends EventEmitter {
     this.todoTool = new TodoTool();
     this.confirmationTool = new ConfirmationTool();
     this.tokenCounter = createTokenCounter("grok-4-latest");
+
+    // Initialize MCP system (async, but don't block constructor)
+    this.initializeMCP().catch(error => {
+      console.warn('Failed to initialize MCP system:', error.message);
+    });
 
     // Load custom instructions
     const customInstructions = loadCustomInstructions();
@@ -113,6 +119,24 @@ Current working directory: ${process.cwd()}`,
     });
   }
 
+  private async initializeMCP(): Promise<void> {
+    try {
+      await mcpManager.initialize();
+    } catch (error: any) {
+      console.warn('MCP initialization failed:', error.message);
+    }
+  }
+
+  private async getAvailableTools(): Promise<any[]> {
+    try {
+      const mcpTools = await mcpManager.getAvailableJurikoTools();
+      return [...JURIKO_TOOLS, ...mcpTools];
+    } catch (error) {
+      console.warn('Failed to load MCP tools, using default tools only');
+      return JURIKO_TOOLS;
+    }
+  }
+
   async processUserMessage(message: string): Promise<ChatEntry[]> {
     // Add user message to conversation
     const userEntry: ChatEntry = {
@@ -128,9 +152,10 @@ Current working directory: ${process.cwd()}`,
     let toolRounds = 0;
 
     try {
+      const availableTools = await this.getAvailableTools();
       let currentResponse = await this.jurikoClient.chat(
         this.messages,
-        JURIKO_TOOLS,
+        availableTools,
         undefined,
         { search_parameters: { mode: "auto" } }
       );
@@ -196,7 +221,7 @@ Current working directory: ${process.cwd()}`,
           // Get next response - this might contain more tool calls
           currentResponse = await this.jurikoClient.chat(
             this.messages,
-            JURIKO_TOOLS,
+            availableTools,
             undefined,
             { search_parameters: { mode: "auto" } }
           );
@@ -314,9 +339,10 @@ Current working directory: ${process.cwd()}`,
         }
 
         // Stream response and accumulate
+        const availableTools = await this.getAvailableTools();
         const stream = this.jurikoClient.chatStream(
           this.messages,
-          JURIKO_TOOLS,
+          availableTools,
           undefined,
           { search_parameters: { mode: "auto" } }
         );
@@ -522,6 +548,11 @@ Current working directory: ${process.cwd()}`,
           return await this.todoTool.updateTodoList(args.updates);
 
         default:
+          // Check if it's an MCP tool
+          if (mcpToolsIntegration.isMCPTool(toolCall.function.name)) {
+            return await mcpToolsIntegration.executeMCPTool(toolCall.function.name, args);
+          }
+          
           return {
             success: false,
             error: `Unknown tool: ${toolCall.function.name}`,

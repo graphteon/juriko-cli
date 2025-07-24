@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2025-01-27
+
+### Added
+- Enhanced MCP (Model Context Protocol) integration with Jina AI
+- Real-time web search and fact-checking capabilities
+- Invoice creation and payment tracking functionality
+- Todo list management system for task planning
+- User confirmation system for file operations
+
+### Changed
+- Improved file editing workflow with better validation
+- Enhanced error handling and user feedback
+- Updated tool usage documentation
+
 ## [0.0.8] - 2025-07-24
 
 ### Added

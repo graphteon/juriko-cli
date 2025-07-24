@@ -9,6 +9,7 @@ import StreamingChat from './components/streaming-chat';
 import { ProviderSelection } from './components/provider-selection';
 import { MultiProviderApiKeyInput } from './components/multi-provider-api-key-input';
 import { LocalLLMWizard } from './components/local-llm-wizard';
+import MCPLoading from './components/mcp-loading';
 import { LLMProvider } from '../llm/types';
 import { LLMClient } from '../llm/client';
 import {
@@ -27,7 +28,7 @@ interface Props {
   agent?: MultiLLMAgent;
 }
 
-type AppState = 'loading' | 'provider-selection' | 'api-key-input' | 'local-llm-wizard' | 'ready';
+type AppState = 'loading' | 'mcp-loading' | 'provider-selection' | 'api-key-input' | 'local-llm-wizard' | 'ready';
 
 export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [appState, setAppState] = useState<AppState>('loading');
@@ -38,6 +39,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
+  const [mcpError, setMcpError] = useState<string | null>(null);
   
   const { exit } = useApp();
   
@@ -52,38 +54,56 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const settings = await loadUserSettings();
-        
-        if (settings.provider && settings.model) {
-          // Check if we have API key for this provider
-          const apiKey = await getApiKey(settings.provider);
-          const baseURL = await getBaseURL(settings.provider);
-          
-          if (apiKey || settings.provider === 'local') {
-            // We have everything needed, initialize directly
-            await initializeLLMClient(settings.provider, settings.model, apiKey || '', baseURL);
-            setSelectedProvider(settings.provider);
-            setSelectedModel(settings.model);
-            setAppState('ready');
-          } else {
-            // We have provider/model but no API key
-            setSelectedProvider(settings.provider);
-            setSelectedModel(settings.model);
-            setNeedsApiKey(true);
-            setAppState('api-key-input');
-          }
-        } else {
-          // No saved settings, show provider selection
-          setAppState('provider-selection');
-        }
+        // First initialize MCP system
+        setAppState('mcp-loading');
       } catch (error) {
-        logger.error('Failed to load settings:', error);
+        logger.error('Failed to start initialization:', error);
         setAppState('provider-selection');
       }
     };
 
     loadSettings();
   }, []);
+
+  // Handle MCP loading completion
+  const handleMCPLoadingComplete = async () => {
+    try {
+      const settings = await loadUserSettings();
+      
+      if (settings.provider && settings.model) {
+        // Check if we have API key for this provider
+        const apiKey = await getApiKey(settings.provider);
+        const baseURL = await getBaseURL(settings.provider);
+        
+        if (apiKey || settings.provider === 'local') {
+          // We have everything needed, initialize directly
+          await initializeLLMClient(settings.provider, settings.model, apiKey || '', baseURL);
+          setSelectedProvider(settings.provider);
+          setSelectedModel(settings.model);
+          setAppState('ready');
+        } else {
+          // We have provider/model but no API key
+          setSelectedProvider(settings.provider);
+          setSelectedModel(settings.model);
+          setNeedsApiKey(true);
+          setAppState('api-key-input');
+        }
+      } else {
+        // No saved settings, show provider selection
+        setAppState('provider-selection');
+      }
+    } catch (error) {
+      logger.error('Failed to load settings:', error);
+      setAppState('provider-selection');
+    }
+  };
+
+  // Handle MCP loading error
+  const handleMCPLoadingError = (error: string) => {
+    setMcpError(error);
+    // Continue to provider selection even if MCP fails
+    setAppState('provider-selection');
+  };
 
   // Show ASCII art banner and tips when app is ready (only once)
   useEffect(() => {
@@ -241,14 +261,31 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     );
   }
 
+  if (appState === 'mcp-loading') {
+    return (
+      <MCPLoading
+        onComplete={handleMCPLoadingComplete}
+        onError={handleMCPLoadingError}
+      />
+    );
+  }
+
   if (appState === 'provider-selection') {
     return (
-      <ProviderSelection
-        onSelect={handleProviderSelection}
-        onCancel={handleProviderCancel}
-        currentProvider={selectedProvider}
-        currentModel={selectedModel}
-      />
+      <Box flexDirection="column">
+        {mcpError && (
+          <Box marginBottom={1} padding={1}>
+            <Text color="yellow">⚠️  MCP initialization failed: {mcpError}</Text>
+            <Text color="gray">Continuing without MCP support...</Text>
+          </Box>
+        )}
+        <ProviderSelection
+          onSelect={handleProviderSelection}
+          onCancel={handleProviderCancel}
+          currentProvider={selectedProvider}
+          currentModel={selectedModel}
+        />
+      </Box>
     );
   }
 

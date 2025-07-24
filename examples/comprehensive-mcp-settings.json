@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "jina-ai-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "jina-ai-mcp-server"
+      ],
+      "env": {
+        "JINA_API_KEY": "YOUR_API_KEY"
+      },
+      "enabled": true,
+      "type": "stdio",
+      "description": "Jina AI MCP server for embeddings and search",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "llmtxt": {
+      "type": "sse",
+      "url": "https://mcp.llmtxt.dev/sse",
+      "enabled": true,
+      "description": "LLMTXT MCP server for text processing and utilities",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    }
+  },
+  "globalTimeout": 30000,
+  "enableLogging": true,
+  "logLevel": "info"
+}

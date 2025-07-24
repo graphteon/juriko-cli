@@ -10,6 +10,7 @@ import * as path from "path";
 import * as os from "os";
 const packageJson = require("../package.json");
 import { logger } from "./utils/logger";
+import { mcpManager } from "./mcp";
 
 // Load environment variables
 dotenv.config();
@@ -90,7 +91,28 @@ program
 
       logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
 
-      render(React.createElement(AppWithProvider, {}));
+      const app = render(React.createElement(AppWithProvider, {}));
+
+      // Handle graceful shutdown
+      const handleShutdown = async () => {
+        try {
+          logger.info("Shutting down JURIKO CLI...");
+          await mcpManager.shutdown();
+          process.exit(0);
+        } catch (error: any) {
+          logger.error("Error during shutdown:", error.message);
+          process.exit(1);
+        }
+      };
+
+      // Handle process termination signals
+      process.on('SIGINT', handleShutdown);
+      process.on('SIGTERM', handleShutdown);
+      
+      // Handle app exit
+      app.waitUntilExit().then(() => {
+        handleShutdown();
+      });
     } catch (error: any) {
       logger.error("❌ Error initializing JURIKO CLI:", error.message);
       process.exit(1);
