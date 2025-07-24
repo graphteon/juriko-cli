@@ -55,7 +55,10 @@ export interface ProviderModels {
 
 export const PROVIDER_MODELS: ProviderModels = {
   anthropic: [
-    { name: 'claude-3-5-sonnet-20241022', description: 'Claude 3.5 Sonnet (Latest)' },
+    { name: 'claude-3-7-sonnet-latest', description: 'Claude 3.7 Sonnet (Latest)' },
+    { name: 'claude-sonnet-4-20250514', description: 'Claude Sonnet 4 (2025-05-14)' },
+    { name: 'claude-opus-4-20250514', description: 'Claude Opus 4 (2025-05-14)' },
+    { name: 'claude-3-5-sonnet-20241022', description: 'Claude 3.5 Sonnet (2024-10-22)' },
     { name: 'claude-3-5-haiku-20241022', description: 'Claude 3.5 Haiku (Fast)' },
     { name: 'claude-3-opus-20240229', description: 'Claude 3 Opus (Most Capable)' },
     { name: 'claude-3-sonnet-20240229', description: 'Claude 3 Sonnet' },
@@ -80,7 +83,7 @@ export const PROVIDER_MODELS: ProviderModels = {
 };
 
 export const DEFAULT_MODELS: Record<LLMProvider, string> = {
-  anthropic: 'claude-3-5-sonnet-20241022',
+  anthropic: 'claude-3-7-sonnet-latest',
   openai: 'gpt-4o',
   grok: 'grok-4-latest',
   local: 'custom-model',

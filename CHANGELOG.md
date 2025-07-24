@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **New Anthropic Models**: Added latest Claude models
+  - `claude-3-7-sonnet-latest` (Latest Claude 3.7 Sonnet)
+  - `claude-sonnet-4-20250514` (Claude Sonnet 4)
+  - `claude-opus-4-20250514` (Claude Opus 4)
+  - Updated default Anthropic model to `claude-3-7-sonnet-latest`
 - **Local LLM Provider Support**: Added comprehensive support for local LLM servers
   - New 'local' provider type alongside existing Anthropic, OpenAI, and Grok providers
   - 4-step configuration wizard for local LLM setup (URL → Model Name → API Key → Save)

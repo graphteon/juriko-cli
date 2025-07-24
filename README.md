@@ -79,7 +79,7 @@ Create `~/.juriko/user-settings.json`:
 ```json
 {
   "provider": "anthropic",
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-3-7-sonnet-latest",
   "apiKeys": {
     "anthropic": "your_anthropic_key_here",
     "openai": "your_openai_key_here",
@@ -150,9 +150,12 @@ You can change providers anytime by:
 ### Supported Models
 
 **Anthropic Claude:**
-- `claude-3-5-sonnet-20241022` (Latest Sonnet)
+- `claude-3-7-sonnet-latest` (Latest Claude 3.7 Sonnet)
+- `claude-sonnet-4-20250514` (Claude Sonnet 4)
+- `claude-opus-4-20250514` (Claude Opus 4)
+- `claude-3-5-sonnet-20241022` (Claude 3.5 Sonnet)
 - `claude-3-5-haiku-20241022` (Fast and efficient)
-- `claude-3-opus-20240229` (Most capable)
+- `claude-3-opus-20240229` (Most capable Claude 3)
 
 **OpenAI:**
 - `gpt-4o` (Latest GPT-4 Omni)
