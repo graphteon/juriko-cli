@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { MultiLLMAgent, ChatEntry, StreamingChunk } from '../../agent/multi-llm-agent';
 import { LLMToolCall } from '../../llm/types';
@@ -31,6 +31,8 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
   const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
   const { exit } = useApp();
   const isMountedRef = useRef(true);
+  const contentBufferRef = useRef('');
+  const contentUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const confirmationService = ConfirmationService.getInstance();
 
@@ -38,6 +40,10 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      // Clear any pending timeouts
+      if (contentUpdateTimeoutRef.current) {
+        clearTimeout(contentUpdateTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -152,22 +158,42 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
                 };
                 setMessages(prev => [...prev, newStreamingMessage]);
                 streamingMessage = newStreamingMessage;
+                contentBufferRef.current = chunk.content;
               } else {
-                // Update existing streaming message
-                setMessages(prev =>
-                  prev.map((msg, idx) =>
-                    idx === prev.length - 1 && msg.isStreaming
-                      ? { ...msg, content: msg.content + chunk.content }
-                      : msg
-                  )
-                );
+                // Buffer content updates to reduce blinking
+                contentBufferRef.current += chunk.content;
+                
+                // Clear existing timeout
+                if (contentUpdateTimeoutRef.current) {
+                  clearTimeout(contentUpdateTimeoutRef.current);
+                }
+                
+                // Debounce content updates (50ms delay)
+                contentUpdateTimeoutRef.current = setTimeout(() => {
+                  if (isMountedRef.current) {
+                    setMessages(prev =>
+                      prev.map((msg, idx) =>
+                        idx === prev.length - 1 && msg.isStreaming
+                          ? { ...msg, content: contentBufferRef.current }
+                          : msg
+                      )
+                    );
+                  }
+                }, 50);
               }
             }
             break;
 
           case "token_count":
             if (chunk.tokenCount !== undefined) {
-              setTokenCount(chunk.tokenCount);
+              // Throttle token count updates to reduce blinking
+              setTokenCount(prev => {
+                // Only update if difference is significant (>10 tokens) or it's been a while
+                if (Math.abs(chunk.tokenCount! - prev) > 10) {
+                  return chunk.tokenCount!;
+                }
+                return prev;
+              });
             }
             break;
 
@@ -215,13 +241,25 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
             break;
 
           case "done":
+            // Clear any pending content updates
+            if (contentUpdateTimeoutRef.current) {
+              clearTimeout(contentUpdateTimeoutRef.current);
+              contentUpdateTimeoutRef.current = null;
+            }
+            
             if (streamingMessage) {
+              // Final content update with buffered content
               setMessages(prev =>
                 prev.map((msg) =>
-                  msg.isStreaming ? { ...msg, isStreaming: false } : msg
+                  msg.isStreaming ? {
+                    ...msg,
+                    content: contentBufferRef.current,
+                    isStreaming: false
+                  } : msg
                 )
               );
               streamingMessage = null;
+              contentBufferRef.current = '';
             }
             break;
         }
@@ -242,7 +280,7 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
     }
   };
 
-  const renderMessage = (message: ChatMessage, index: number) => {
+  const renderMessage = useCallback((message: ChatMessage, index: number) => {
     switch (message.type) {
       case 'user':
         return (
@@ -285,7 +323,7 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
       default:
         return null;
     }
-  };
+  }, []);
 
   // If confirmation dialog is active, show it instead of the chat
   if (confirmationOptions) {
