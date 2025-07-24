@@ -2,7 +2,7 @@
 
 A conversational AI CLI tool with intelligent text editor capabilities and tool usage.
 
-<img width="980" height="435" alt="Screenshot 2025-07-21 at 13 35 41" src="" />
+<img width="1039" height="490" alt="Screenshot 2025-07-21 at 13 35 41" src="blobs/welcome.png" />
 
 ## Features
 

@@ -89,7 +89,7 @@ export default function ToolCallBox({ toolCall, result }: ToolCallBoxProps) {
           width="100%"
         >
           <Text color={result?.success ? "white" : "red"}>
-            {truncateText(result?.output || result?.error || '', 5)}
+            {toolCall.function.name === 'create_todo_list' || toolCall.function.name === 'update_todo_list' ? result?.output || result?.error || '' : truncateText(result?.output || result?.error || '', 5)}
           </Text>
         </Box>
       )}
