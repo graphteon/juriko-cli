@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import { MultiLLMAgent, ChatEntry } from '../../agent/multi-llm-agent';
+import { MultiLLMAgent, ChatEntry, StreamingChunk } from '../../agent/multi-llm-agent';
 import { LLMToolCall } from '../../llm/types';
 import { ToolResult } from '../../types';
 import ToolCallBox from './tool-call-box';
@@ -134,64 +134,98 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
     }
 
     try {
-      const chatEntries = await agent.processUserMessage(message);
-      
-      if (!isMountedRef.current) return;
-      
-      // Process each chat entry
-      logger.debug('Processing chat entries:', chatEntries.length);
-      chatEntries.forEach((entry: ChatEntry, index: number) => {
+      let streamingMessage: ChatMessage | null = null;
+
+      for await (const chunk of agent.processUserMessageStream(message)) {
         if (!isMountedRef.current) return;
-        
-        logger.debug(`Entry ${index}:`, entry.type, entry.toolCalls?.length || 0, 'tool calls');
-        
-        switch (entry.type) {
-          case 'assistant':
-            if (entry.toolCalls && entry.toolCalls.length > 0) {
-              // Add tool calls message
-              const toolCallsMessage: ChatMessage = {
-                type: 'tool_calls',
-                toolCalls: entry.toolCalls,
-                timestamp: entry.timestamp
-              };
-              logger.debug('Adding tool calls message:', toolCallsMessage.toolCalls.length);
-              if (isMountedRef.current) {
-                setMessages(prev => [...prev, toolCallsMessage]);
-              }
-            }
-            
-            if (entry.content && entry.content !== "Using tools to help you...") {
-              // Add assistant response
-              const assistantMessage: ChatMessage = {
-                type: 'assistant',
-                content: entry.content,
-                timestamp: entry.timestamp
-              };
-              if (isMountedRef.current) {
-                setMessages(prev => [...prev, assistantMessage]);
+
+        switch (chunk.type) {
+          case "content":
+            if (chunk.content) {
+              if (!streamingMessage) {
+                // Create new streaming message
+                const newStreamingMessage: ChatMessage = {
+                  type: 'assistant',
+                  content: chunk.content,
+                  timestamp: new Date(),
+                  isStreaming: true
+                };
+                setMessages(prev => [...prev, newStreamingMessage]);
+                streamingMessage = newStreamingMessage;
+              } else {
+                // Update existing streaming message
+                setMessages(prev =>
+                  prev.map((msg, idx) =>
+                    idx === prev.length - 1 && msg.isStreaming
+                      ? { ...msg, content: msg.content + chunk.content }
+                      : msg
+                  )
+                );
               }
             }
             break;
 
-          case 'tool_result':
-            if (entry.toolCall && entry.toolResult) {
-              logger.debug('Processing tool result for:', entry.toolCall.function.name);
-              // Update the corresponding tool call with result
-              if (isMountedRef.current) {
-                setMessages(prev => prev.map(msg => {
-                  if (msg.type === 'tool_calls' && msg.toolCalls) {
-                    const updatedToolCalls = msg.toolCalls.map(tc =>
-                      tc.id === entry.toolCall?.id ? { ...tc, result: entry.toolResult } : tc
-                    );
-                    return { ...msg, toolCalls: updatedToolCalls };
-                  }
-                  return msg;
-                }));
+          case "token_count":
+            if (chunk.tokenCount !== undefined) {
+              setTokenCount(chunk.tokenCount);
+            }
+            break;
+
+          case "tool_calls":
+            if (chunk.toolCalls) {
+              // Stop streaming for the current assistant message
+              if (streamingMessage) {
+                setMessages(prev =>
+                  prev.map((msg) =>
+                    msg.isStreaming
+                      ? {
+                          ...msg,
+                          isStreaming: false,
+                          toolCalls: chunk.toolCalls,
+                        }
+                      : msg
+                  )
+                );
+                streamingMessage = null;
               }
+
+              // Add tool calls message
+              const toolCallsMessage: ChatMessage = {
+                type: 'tool_calls',
+                toolCalls: chunk.toolCalls,
+                timestamp: new Date()
+              };
+              setMessages(prev => [...prev, toolCallsMessage]);
+            }
+            break;
+
+          case "tool_result":
+            if (chunk.toolCall && chunk.toolResult) {
+              // Update the corresponding tool call with result
+              setMessages(prev => prev.map(msg => {
+                if (msg.type === 'tool_calls' && msg.toolCalls) {
+                  const updatedToolCalls = msg.toolCalls.map(tc =>
+                    tc.id === chunk.toolCall?.id ? { ...tc, result: chunk.toolResult } : tc
+                  );
+                  return { ...msg, toolCalls: updatedToolCalls };
+                }
+                return msg;
+              }));
+            }
+            break;
+
+          case "done":
+            if (streamingMessage) {
+              setMessages(prev =>
+                prev.map((msg) =>
+                  msg.isStreaming ? { ...msg, isStreaming: false } : msg
+                )
+              );
+              streamingMessage = null;
             }
             break;
         }
-      });
+      }
     } catch (error: any) {
       if (isMountedRef.current) {
         const errorMessage: ChatMessage = {

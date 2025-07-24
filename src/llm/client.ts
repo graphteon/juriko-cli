@@ -250,7 +250,24 @@ export class LLMClient {
                       type: 'function',
                       function: {
                         name: chunk.content_block.name,
-                        arguments: JSON.stringify(chunk.content_block.input),
+                        arguments: "", // Start with empty string, will be filled by input_json_delta
+                      },
+                    }]
+                  }
+                }]
+              };
+            } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'input_json_delta') {
+              // Handle streaming tool arguments for Anthropic
+              // Note: Anthropic uses content block index, but we need to map to tool_calls array index
+              // Content block 0 is text, content block 1+ are tool calls, so subtract 1
+              const toolCallIndex = Math.max(0, (chunk.index || 1) - 1);
+              yield {
+                choices: [{
+                  delta: {
+                    tool_calls: [{
+                      index: toolCallIndex,
+                      function: {
+                        arguments: chunk.delta.partial_json,
                       },
                     }]
                   }
