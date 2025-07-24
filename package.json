@@ -1,6 +1,6 @@
 {
   "name": "@graphteon/juriko-cli",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "JURIKO - An open-source AI agent that brings the power of AI directly into your terminal.",
   "main": "dist/index.js",
   "bin": {
@@ -33,6 +33,7 @@
     "fs-extra": "^11.1.1",
     "ink": "^3.2.0",
     "ink-markdown": "^1.0.4",
+    "mcp-client": "^1.13.0",
     "openai": "^5.10.1",
     "react": "^17.0.2",
     "tiktoken": "^1.0.21"

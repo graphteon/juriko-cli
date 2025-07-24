@@ -8,6 +8,7 @@ A conversational AI CLI tool with intelligent text editor capabilities and tool 
 
 - **🤖 Multi-LLM Provider Support**: Choose from Anthropic Claude, OpenAI GPT, Grok, or Local LLM models
 - **🎯 Interactive Provider Selection**: Easy-to-use interface for selecting providers and models at startup
+- **🔌 MCP Integration**: Connect to Model Context Protocol servers for extended tool capabilities
 - **📝 Smart File Operations**: AI automatically uses tools to view, create, and edit files
 - **⚡ Bash Integration**: Execute shell commands through natural conversation
 - **🔧 Automatic Tool Selection**: AI intelligently chooses the right tools for your requests
@@ -256,6 +257,86 @@ Local LLMs are particularly useful for:
 - **Offline development** when internet connectivity is limited
 - **Cost optimization** for high-volume usage
 - **Custom fine-tuned models** specific to your domain or coding style
+
+## MCP Integration
+
+JURIKO supports the Model Context Protocol (MCP), allowing you to connect to external tools and resources through MCP servers. This extends JURIKO's capabilities beyond built-in tools.
+
+### MCP Configuration
+
+Create `~/.juriko/mcp-settings.json` to configure MCP servers:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"],
+      "enabled": true
+    },
+    "brave-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your_brave_api_key_here"
+      },
+      "enabled": true
+    },
+    "example-sse": {
+      "type": "sse",
+      "url": "http://localhost:8080/sse",
+      "headers": {
+        "Authorization": "Bearer your_token_here"
+      },
+      "enabled": true
+    },
+    "example-http": {
+      "type": "httpStream",
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer your_token_here"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+### Supported MCP Server Types
+
+**Local MCP Servers (stdio):**
+- Run as child processes communicating via standard input/output
+- Examples: filesystem access, local databases, system tools
+- Use `command` and `args` to specify how to launch the server
+
+**HTTP Stream MCP Servers:**
+- Connect to HTTP-based servers using streaming
+- Examples: web APIs, cloud services
+- Use `url` and optional `headers` for authentication
+
+**SSE MCP Servers:**
+- Connect to HTTP-based servers using Server-Sent Events
+- Examples: real-time APIs, streaming services
+- Use `url` and optional `headers` for authentication
+
+### Available MCP Tools
+
+Once configured, MCP tools become available in JURIKO with the naming pattern `mcp_{server}_{tool}`. For example:
+- `mcp_filesystem_read_file` - Read files through filesystem server
+- `mcp_brave_search_web_search` - Search the web using Brave Search
+- `mcp_weather_get_forecast` - Get weather data from a weather server
+
+### MCP Resources
+
+MCP servers can also provide resources (data sources) that JURIKO can access for context, such as:
+- File contents from filesystem servers
+- API responses from web services
+- Database query results
+- System information
+
+For detailed MCP setup and troubleshooting, see [`docs/MCP_INTEGRATION.md`](docs/MCP_INTEGRATION.md).
 
 ## Development
 

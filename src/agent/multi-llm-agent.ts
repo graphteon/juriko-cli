@@ -5,6 +5,7 @@ import { ToolResult } from "../types";
 import { EventEmitter } from "events";
 import { createTokenCounter, TokenCounter } from "../utils/token-counter";
 import { loadCustomInstructions } from "../utils/custom-instructions";
+import { mcpManager, mcpToolsIntegration } from "../mcp";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -186,6 +187,11 @@ export class MultiLLMAgent extends EventEmitter {
     this.confirmationTool = new ConfirmationTool();
     this.tokenCounter = createTokenCounter("gpt-4"); // Default tokenizer
 
+    // Initialize MCP system (async, but don't block constructor)
+    this.initializeMCP().catch(error => {
+      console.warn('Failed to initialize MCP system:', error.message);
+    });
+
     // Load custom instructions
     const customInstructions = loadCustomInstructions();
     const customInstructionsSection = customInstructions
@@ -254,6 +260,24 @@ Current working directory: ${process.cwd()}`,
     });
   }
 
+  private async initializeMCP(): Promise<void> {
+    try {
+      await mcpManager.initialize();
+    } catch (error: any) {
+      console.warn('MCP initialization failed:', error.message);
+    }
+  }
+
+  private async getAvailableTools(): Promise<any[]> {
+    try {
+      const mcpTools = await mcpManager.getAvailableJurikoTools();
+      return [...MULTI_LLM_TOOLS, ...mcpTools];
+    } catch (error) {
+      console.warn('Failed to load MCP tools, using default tools only');
+      return MULTI_LLM_TOOLS;
+    }
+  }
+
   async processUserMessage(message: string): Promise<ChatEntry[]> {
     // Add user message to conversation
     const userEntry: ChatEntry = {
@@ -269,9 +293,10 @@ Current working directory: ${process.cwd()}`,
     let toolRounds = 0;
 
     try {
+      const availableTools = await this.getAvailableTools();
       let currentResponse = await this.llmClient.chat(
         this.messages,
-        MULTI_LLM_TOOLS
+        availableTools
       );
 
       // Agent loop - continue until no more tool calls or max rounds reached
@@ -335,7 +360,7 @@ Current working directory: ${process.cwd()}`,
           // Get next response - this might contain more tool calls
           currentResponse = await this.llmClient.chat(
             this.messages,
-            MULTI_LLM_TOOLS
+            availableTools
           );
         } else {
           // No more tool calls, add final response
@@ -504,9 +529,10 @@ Current working directory: ${process.cwd()}`,
         }
 
         // Stream response and accumulate
+        const availableTools = await this.getAvailableTools();
         const stream = this.llmClient.chatStream(
           this.messages,
-          MULTI_LLM_TOOLS
+          availableTools
         );
         let accumulatedMessage: any = {};
         let accumulatedContent = "";
@@ -718,6 +744,11 @@ Current working directory: ${process.cwd()}`,
           return await this.todoTool.updateTodoList(args.updates);
 
         default:
+          // Check if it's an MCP tool
+          if (mcpToolsIntegration.isMCPTool(toolCall.function.name)) {
+            return await mcpToolsIntegration.executeMCPTool(toolCall.function.name, args);
+          }
+          
           return {
             success: false,
             error: `Unknown tool: ${toolCall.function.name}`,

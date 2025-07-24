@@ -1,0 +1,89 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"],
+      "enabled": false,
+      "description": "Local filesystem access server",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "brave-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your_brave_api_key_here"
+      },
+      "enabled": false,
+      "description": "Brave Search API server",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "git-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git", "--repository", "."],
+      "enabled": false,
+      "description": "Git operations MCP server",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "sqlite-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "./database.sqlite"],
+      "enabled": false,
+      "description": "SQLite database MCP server",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "example-sse": {
+      "type": "sse",
+      "url": "http://localhost:8080/sse",
+      "headers": {
+        "Authorization": "Bearer your-api-key-here",
+        "Content-Type": "application/json"
+      },
+      "enabled": false,
+      "description": "Example SSE-based MCP server",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "example-http": {
+      "type": "httpStream",
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer your_token_here"
+      },
+      "enabled": false,
+      "description": "Example HTTP stream MCP server",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    },
+    "custom-tools": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["./custom-mcp-server.js"],
+      "env": {
+        "DEBUG": "mcp:*",
+        "PORT": "8080"
+      },
+      "enabled": false,
+      "description": "Custom tools MCP server",
+      "timeout": 45000,
+      "retryAttempts": 5,
+      "retryDelay": 2000
+    }
+  },
+  "globalTimeout": 30000,
+  "enableLogging": true,
+  "logLevel": "info"
+}
