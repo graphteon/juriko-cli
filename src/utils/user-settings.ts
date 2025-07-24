@@ -11,6 +11,13 @@ export interface UserSettings {
     anthropic?: string;
     openai?: string;
     grok?: string;
+    local?: string;
+  };
+  baseURLs?: {
+    anthropic?: string;
+    openai?: string;
+    grok?: string;
+    local?: string;
   };
   customInstructionsPath?: string;
   theme?: string;
@@ -92,6 +99,8 @@ export function getApiKeyFromEnv(provider: LLMProvider): string | undefined {
       return process.env.OPENAI_API_KEY || process.env.JURIKO_OPENAI_API_KEY;
     case 'grok':
       return process.env.GROK_API_KEY || process.env.JURIKO_GROK_API_KEY;
+    case 'local':
+      return process.env.LOCAL_LLM_API_KEY || process.env.JURIKO_LOCAL_LLM_API_KEY;
     default:
       return undefined;
   }
@@ -106,6 +115,51 @@ export async function getApiKey(provider: LLMProvider): Promise<string | undefin
   
   // Then try user settings
   return await getApiKeyFromSettings(provider);
+}
+
+export async function saveBaseURL(provider: LLMProvider, baseURL: string): Promise<void> {
+  const settings = await loadUserSettings();
+  
+  const updatedSettings: UserSettings = {
+    ...settings,
+    baseURLs: {
+      ...settings.baseURLs,
+      [provider]: baseURL,
+    },
+  };
+  
+  await saveUserSettings(updatedSettings);
+}
+
+export async function getBaseURLFromSettings(provider: LLMProvider): Promise<string | undefined> {
+  const settings = await loadUserSettings();
+  return settings.baseURLs?.[provider];
+}
+
+export function getBaseURLFromEnv(provider: LLMProvider): string | undefined {
+  switch (provider) {
+    case 'anthropic':
+      return process.env.ANTHROPIC_BASE_URL || process.env.JURIKO_ANTHROPIC_BASE_URL;
+    case 'openai':
+      return process.env.OPENAI_BASE_URL || process.env.JURIKO_OPENAI_BASE_URL;
+    case 'grok':
+      return process.env.GROK_BASE_URL || process.env.JURIKO_GROK_BASE_URL;
+    case 'local':
+      return process.env.LOCAL_LLM_BASE_URL || process.env.JURIKO_LOCAL_LLM_BASE_URL;
+    default:
+      return undefined;
+  }
+}
+
+export async function getBaseURL(provider: LLMProvider): Promise<string | undefined> {
+  // First try environment variables
+  const envURL = getBaseURLFromEnv(provider);
+  if (envURL) {
+    return envURL;
+  }
+  
+  // Then try user settings
+  return await getBaseURLFromSettings(provider);
 }
 
 export function getSettingsPath(): string {

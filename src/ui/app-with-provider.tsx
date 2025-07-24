@@ -8,13 +8,16 @@ import StatusBar from './components/status-bar';
 import StreamingChat from './components/streaming-chat';
 import { ProviderSelection } from './components/provider-selection';
 import { MultiProviderApiKeyInput } from './components/multi-provider-api-key-input';
+import { LocalLLMWizard } from './components/local-llm-wizard';
 import { LLMProvider } from '../llm/types';
 import { LLMClient } from '../llm/client';
 import {
   loadUserSettings,
   updateProviderSettings,
   getApiKey,
-  saveApiKey
+  saveApiKey,
+  getBaseURL,
+  saveBaseURL
 } from '../utils/user-settings';
 import chalk from 'chalk';
 import cfonts from 'cfonts';
@@ -24,7 +27,7 @@ interface Props {
   agent?: MultiLLMAgent;
 }
 
-type AppState = 'loading' | 'provider-selection' | 'api-key-input' | 'ready';
+type AppState = 'loading' | 'provider-selection' | 'api-key-input' | 'local-llm-wizard' | 'ready';
 
 export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [appState, setAppState] = useState<AppState>('loading');
@@ -53,10 +56,11 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         if (settings.provider && settings.model) {
           // Check if we have API key for this provider
           const apiKey = await getApiKey(settings.provider);
+          const baseURL = await getBaseURL(settings.provider);
           
-          if (apiKey) {
+          if (apiKey || settings.provider === 'local') {
             // We have everything needed, initialize directly
-            await initializeLLMClient(settings.provider, settings.model, apiKey);
+            await initializeLLMClient(settings.provider, settings.model, apiKey || '', baseURL);
             setSelectedProvider(settings.provider);
             setSelectedModel(settings.model);
             setAppState('ready');
@@ -107,12 +111,13 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     }
   }, [appState, hasShownWelcome]);
 
-  const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string) => {
+  const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string, baseURL?: string) => {
     try {
       const client = new LLMClient({
         provider,
         model,
         apiKey,
+        baseURL,
       });
 
       setLlmClient(client);
@@ -135,12 +140,19 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     setSelectedProvider(provider);
     setSelectedModel(model);
     
+    // For local provider, always show wizard for configuration
+    if (provider === 'local') {
+      setAppState('local-llm-wizard');
+      return;
+    }
+    
     // Check if we have API key for this provider
     const apiKey = await getApiKey(provider);
+    const baseURL = await getBaseURL(provider);
     
     if (apiKey) {
       try {
-        await initializeLLMClient(provider, model, apiKey);
+        await initializeLLMClient(provider, model, apiKey, baseURL);
         await updateProviderSettings(provider, model);
         setAppState('ready');
       } catch (error) {
@@ -161,7 +173,8 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     }
 
     try {
-      await initializeLLMClient(selectedProvider, selectedModel, apiKey);
+      const baseURL = await getBaseURL(selectedProvider);
+      await initializeLLMClient(selectedProvider, selectedModel, apiKey, baseURL);
       
       if (saveKey) {
         await saveApiKey(selectedProvider, apiKey);
@@ -175,11 +188,42 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     }
   };
 
+  const handleLocalLLMWizard = async (config: { baseURL: string; modelName: string; apiKey: string; saveConfig: boolean }) => {
+    if (!selectedProvider) {
+      logger.error('Provider not selected');
+      return;
+    }
+
+    try {
+      // Use the model name from wizard instead of selectedModel
+      await initializeLLMClient(selectedProvider, config.modelName, config.apiKey, config.baseURL);
+      
+      if (config.saveConfig) {
+        if (config.apiKey) {
+          await saveApiKey(selectedProvider, config.apiKey);
+        }
+        await saveBaseURL(selectedProvider, config.baseURL);
+      }
+      
+      // Update settings with the model name from wizard
+      await updateProviderSettings(selectedProvider, config.modelName);
+      setSelectedModel(config.modelName);
+      setAppState('ready');
+    } catch (error) {
+      logger.error('Failed to initialize local LLM:', error);
+      // Stay in wizard state to allow retry
+    }
+  };
+
   const handleProviderCancel = () => {
     exit();
   };
 
   const handleApiKeyCancel = () => {
+    setAppState('provider-selection');
+  };
+
+  const handleLocalLLMWizardCancel = () => {
     setAppState('provider-selection');
   };
 
@@ -213,6 +257,15 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         provider={selectedProvider}
         onSubmit={handleApiKeyInput}
         onCancel={handleApiKeyCancel}
+      />
+    );
+  }
+
+  if (appState === 'local-llm-wizard') {
+    return (
+      <LocalLLMWizard
+        onSubmit={handleLocalLLMWizard}
+        onCancel={handleLocalLLMWizardCancel}
       />
     );
   }

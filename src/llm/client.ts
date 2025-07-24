@@ -19,6 +19,7 @@ export class LLMClient {
   private anthropicClient?: Anthropic;
   private openaiClient?: OpenAI;
   private grokClient?: OpenAI;
+  private localClient?: OpenAI;
   private config: LLMConfig;
 
   constructor(config: LLMConfig) {
@@ -44,6 +45,12 @@ export class LLMClient {
         this.grokClient = new OpenAI({
           apiKey: this.config.apiKey,
           baseURL: this.config.baseURL || 'https://api.x.ai/v1',
+        });
+        break;
+      case 'local':
+        this.localClient = new OpenAI({
+          apiKey: this.config.apiKey || 'local-key',
+          baseURL: this.config.baseURL || 'http://localhost:1234/v1',
         });
         break;
     }
@@ -198,6 +205,18 @@ export class LLMClient {
 
           return grokResponse as LLMResponse;
 
+        case 'local':
+          if (!this.localClient) throw new Error('Local LLM client not initialized');
+          
+          const localResponse = await this.localClient.chat.completions.create({
+            model: modelToUse,
+            messages: messages as any,
+            tools: tools as any,
+            tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
+          });
+
+          return localResponse as LLMResponse;
+
         default:
           throw new Error(`Unsupported provider: ${this.config.provider}`);
       }
@@ -306,6 +325,22 @@ export class LLMClient {
           });
 
           for await (const chunk of grokStream) {
+            yield chunk;
+          }
+          break;
+
+        case 'local':
+          if (!this.localClient) throw new Error('Local LLM client not initialized');
+          
+          const localStream = await this.localClient.chat.completions.create({
+            model: modelToUse,
+            messages: messages as any,
+            tools: tools as any,
+            tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
+            stream: true,
+          });
+
+          for await (const chunk of localStream) {
             yield chunk;
           }
           break;

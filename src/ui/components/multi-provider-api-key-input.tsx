@@ -42,6 +42,13 @@ export const MultiProviderApiKeyInput: React.FC<MultiProviderApiKeyInputProps> =
           placeholder: 'xai-...',
           description: 'Get your API key from https://console.x.ai/',
         };
+      case 'local':
+        return {
+          name: 'Local LLM',
+          envVar: 'LOCAL_LLM_API_KEY',
+          placeholder: 'your-api-key or leave empty',
+          description: 'Configure your local LLM endpoint (e.g., Ollama, LM Studio, etc.)',
+        };
       default:
         return {
           name: (provider as string).toUpperCase(),

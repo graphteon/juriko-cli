@@ -19,7 +19,7 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
   const [selectedModelIndex, setSelectedModelIndex] = useState(0);
   const [isSelectingModel, setIsSelectingModel] = useState(false);
 
-  const providers: LLMProvider[] = ['anthropic', 'openai', 'grok'];
+  const providers: LLMProvider[] = ['anthropic', 'openai', 'grok', 'local'];
   const currentProviderModels = PROVIDER_MODELS[providers[selectedProviderIndex]];
 
   useEffect(() => {

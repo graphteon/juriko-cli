@@ -1,4 +1,4 @@
-export type LLMProvider = 'anthropic' | 'openai' | 'grok';
+export type LLMProvider = 'anthropic' | 'openai' | 'grok' | 'local';
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -74,12 +74,16 @@ export const PROVIDER_MODELS: ProviderModels = {
     { name: 'grok-3-fast', description: 'X.AI Grok-3 Fast' },
     { name: 'grok-3-mini-fast', description: 'X.AI Grok-3 Mini Fast' },
   ],
+  local: [
+    { name: 'custom-model', description: 'Custom Local Model' },
+  ],
 };
 
 export const DEFAULT_MODELS: Record<LLMProvider, string> = {
   anthropic: 'claude-3-5-sonnet-20241022',
   openai: 'gpt-4o',
   grok: 'grok-4-latest',
+  local: 'custom-model',
 };
 
 export const PROVIDER_ENV_VARS: Record<LLMProvider, { apiKey: string; baseURL?: string }> = {
@@ -94,5 +98,9 @@ export const PROVIDER_ENV_VARS: Record<LLMProvider, { apiKey: string; baseURL?: 
   grok: {
     apiKey: 'GROK_API_KEY',
     baseURL: 'GROK_BASE_URL',
+  },
+  local: {
+    apiKey: 'LOCAL_LLM_API_KEY',
+    baseURL: 'LOCAL_LLM_BASE_URL',
   },
 };
