@@ -5,9 +5,10 @@ import { getProjectInfo, getModelDisplayName } from '../../utils/project-info';
 interface StatusBarProps {
   provider: string;
   model: string;
+  tokenCount?: number;
 }
 
-export default function StatusBar({ provider, model }: StatusBarProps) {
+export default function StatusBar({ provider, model, tokenCount = 0 }: StatusBarProps) {
   const projectInfo = getProjectInfo();
   const modelDisplay = getModelDisplayName(provider, model);
   
@@ -24,8 +25,7 @@ export default function StatusBar({ provider, model }: StatusBarProps) {
       </Box>
       
       <Box>
-        <Text color="red">{projectInfo.sandboxStatus}</Text>
-        <Text color="gray"> (see /docs)</Text>
+        <Text color="green">Tokens: {tokenCount}</Text>
       </Box>
       
       <Box>

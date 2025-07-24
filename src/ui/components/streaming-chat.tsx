@@ -11,6 +11,7 @@ import { logger } from '../../utils/logger';
 interface StreamingChatProps {
   agent: MultiLLMAgent;
   onProviderSwitch: () => void;
+  onTokenCountChange?: (count: number) => void;
 }
 
 interface ChatMessage {
@@ -22,7 +23,7 @@ interface ChatMessage {
   isStreaming?: boolean;
 }
 
-export default function StreamingChat({ agent, onProviderSwitch }: StreamingChatProps) {
+export default function StreamingChat({ agent, onProviderSwitch, onTokenCountChange }: StreamingChatProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,6 +60,13 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
       confirmationService.off('confirmation-requested', handleConfirmationRequest);
     };
   }, [confirmationService]);
+
+  // Handle token count changes
+  useEffect(() => {
+    if (onTokenCountChange) {
+      onTokenCountChange(tokenCount);
+    }
+  }, [tokenCount, onTokenCountChange]);
 
   const handleConfirmation = (dontAskAgain?: boolean) => {
     confirmationService.confirmOperation(true, dontAskAgain);
@@ -345,12 +353,6 @@ export default function StreamingChat({ agent, onProviderSwitch }: StreamingChat
         {/*<Box marginBottom={1}>
           <Text bold color="cyan">🔧 JURIKO CLI - Text Editor Agent</Text>
         </Box>*/}
-        
-        <Box marginBottom={1}>
-          <Text color="green">
-            Provider: {agent.getCurrentModel().toUpperCase()} | Tokens: {tokenCount}
-          </Text>
-        </Box>
         
         <Box flexDirection="column" marginBottom={1}>
           <Text dimColor>Available commands: view, str_replace, create, insert, undo_edit, bash, help</Text>

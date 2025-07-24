@@ -37,6 +37,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [llmClient, setLlmClient] = useState<LLMClient | undefined>();
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  const [tokenCount, setTokenCount] = useState(0);
   
   const { exit } = useApp();
   
@@ -278,11 +279,12 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
             key="streaming-chat" // Add key to prevent re-mounting
             agent={agent}
             onProviderSwitch={() => setAppState('provider-selection')}
+            onTokenCountChange={setTokenCount}
           />
         </Box>
         
         {selectedProvider && selectedModel && (
-          <StatusBar provider={selectedProvider} model={selectedModel} />
+          <StatusBar provider={selectedProvider} model={selectedModel} tokenCount={tokenCount} />
         )}
       </Box>
     );
