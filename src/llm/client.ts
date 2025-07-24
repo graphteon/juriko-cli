@@ -19,6 +19,7 @@ export class LLMClient {
   private anthropicClient?: Anthropic;
   private openaiClient?: OpenAI;
   private grokClient?: OpenAI;
+  private localClient?: OpenAI;
   private config: LLMConfig;
 
   constructor(config: LLMConfig) {
@@ -44,6 +45,12 @@ export class LLMClient {
         this.grokClient = new OpenAI({
           apiKey: this.config.apiKey,
           baseURL: this.config.baseURL || 'https://api.x.ai/v1',
+        });
+        break;
+      case 'local':
+        this.localClient = new OpenAI({
+          apiKey: this.config.apiKey || 'local-key',
+          baseURL: this.config.baseURL || 'http://localhost:1234/v1',
         });
         break;
     }
@@ -198,6 +205,18 @@ export class LLMClient {
 
           return grokResponse as LLMResponse;
 
+        case 'local':
+          if (!this.localClient) throw new Error('Local LLM client not initialized');
+          
+          const localResponse = await this.localClient.chat.completions.create({
+            model: modelToUse,
+            messages: messages as any,
+            tools: tools as any,
+            tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
+          });
+
+          return localResponse as LLMResponse;
+
         default:
           throw new Error(`Unsupported provider: ${this.config.provider}`);
       }
@@ -250,7 +269,24 @@ export class LLMClient {
                       type: 'function',
                       function: {
                         name: chunk.content_block.name,
-                        arguments: JSON.stringify(chunk.content_block.input),
+                        arguments: "", // Start with empty string, will be filled by input_json_delta
+                      },
+                    }]
+                  }
+                }]
+              };
+            } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'input_json_delta') {
+              // Handle streaming tool arguments for Anthropic
+              // Note: Anthropic uses content block index, but we need to map to tool_calls array index
+              // Content block 0 is text, content block 1+ are tool calls, so subtract 1
+              const toolCallIndex = Math.max(0, (chunk.index || 1) - 1);
+              yield {
+                choices: [{
+                  delta: {
+                    tool_calls: [{
+                      index: toolCallIndex,
+                      function: {
+                        arguments: chunk.delta.partial_json,
                       },
                     }]
                   }
@@ -289,6 +325,22 @@ export class LLMClient {
           });
 
           for await (const chunk of grokStream) {
+            yield chunk;
+          }
+          break;
+
+        case 'local':
+          if (!this.localClient) throw new Error('Local LLM client not initialized');
+          
+          const localStream = await this.localClient.chat.completions.create({
+            model: modelToUse,
+            messages: messages as any,
+            tools: tools as any,
+            tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
+            stream: true,
+          });
+
+          for await (const chunk of localStream) {
             yield chunk;
           }
           break;

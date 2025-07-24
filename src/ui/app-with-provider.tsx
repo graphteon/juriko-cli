@@ -4,23 +4,30 @@ import { MultiLLMAgent } from '../agent/multi-llm-agent';
 import { ToolResult } from '../types';
 import { ConfirmationService, ConfirmationOptions } from '../utils/confirmation-service';
 import ConfirmationDialog from './components/confirmation-dialog';
+import StatusBar from './components/status-bar';
+import StreamingChat from './components/streaming-chat';
 import { ProviderSelection } from './components/provider-selection';
 import { MultiProviderApiKeyInput } from './components/multi-provider-api-key-input';
+import { LocalLLMWizard } from './components/local-llm-wizard';
 import { LLMProvider } from '../llm/types';
 import { LLMClient } from '../llm/client';
-import { 
-  loadUserSettings, 
-  updateProviderSettings, 
-  getApiKey, 
-  saveApiKey 
+import {
+  loadUserSettings,
+  updateProviderSettings,
+  getApiKey,
+  saveApiKey,
+  getBaseURL,
+  saveBaseURL
 } from '../utils/user-settings';
 import chalk from 'chalk';
+import cfonts from 'cfonts';
+import { logger } from '../utils/logger';
 
 interface Props {
   agent?: MultiLLMAgent;
 }
 
-type AppState = 'loading' | 'provider-selection' | 'api-key-input' | 'ready';
+type AppState = 'loading' | 'provider-selection' | 'api-key-input' | 'local-llm-wizard' | 'ready';
 
 export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [appState, setAppState] = useState<AppState>('loading');
@@ -29,26 +36,12 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [agent, setAgent] = useState<MultiLLMAgent | undefined>(initialAgent);
   const [llmClient, setLlmClient] = useState<LLMClient | undefined>();
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  const [tokenCount, setTokenCount] = useState(0);
   
-  const [input, setInput] = useState('');
-  const [history, setHistory] = useState<Array<{ command: string; result: ToolResult }>>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
   const { exit } = useApp();
   
   const confirmationService = ConfirmationService.getInstance();
-
-  useEffect(() => {
-    const handleConfirmationRequest = (options: ConfirmationOptions) => {
-      setConfirmationOptions(options);
-    };
-
-    confirmationService.on('confirmation-requested', handleConfirmationRequest);
-
-    return () => {
-      confirmationService.off('confirmation-requested', handleConfirmationRequest);
-    };
-  }, [confirmationService]);
 
   // Reset confirmation service session on app start
   useEffect(() => {
@@ -64,10 +57,11 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         if (settings.provider && settings.model) {
           // Check if we have API key for this provider
           const apiKey = await getApiKey(settings.provider);
+          const baseURL = await getBaseURL(settings.provider);
           
-          if (apiKey) {
+          if (apiKey || settings.provider === 'local') {
             // We have everything needed, initialize directly
-            await initializeLLMClient(settings.provider, settings.model, apiKey);
+            await initializeLLMClient(settings.provider, settings.model, apiKey || '', baseURL);
             setSelectedProvider(settings.provider);
             setSelectedModel(settings.model);
             setAppState('ready');
@@ -83,7 +77,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
           setAppState('provider-selection');
         }
       } catch (error) {
-        console.error('Failed to load settings:', error);
+        logger.error('Failed to load settings:', error);
         setAppState('provider-selection');
       }
     };
@@ -91,12 +85,40 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     loadSettings();
   }, []);
 
-  const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string) => {
+  // Show ASCII art banner and tips when app is ready (only once)
+  useEffect(() => {
+    if (appState === 'ready' && !hasShownWelcome) {
+      logger.clear();
+      cfonts.say("#JURIKO", {
+        font: "block",
+        align: "left",
+        colors: ["magenta", "gray"],
+        space: true,
+        maxLength: "0",
+        gradient: ["magenta", "cyan"],
+        independentGradient: false,
+        transitionGradient: true,
+        env: "node",
+      });
+
+      logger.info("Tips for getting started:");
+      logger.info("1. Ask questions, edit files, or run commands.");
+      logger.info("2. Be specific for the best results.");
+      logger.info("3. Create JURIKO.md files to customize your interactions with JURIKO.");
+      logger.info("4. /help for more information.");
+      logger.info("");
+      
+      setHasShownWelcome(true);
+    }
+  }, [appState, hasShownWelcome]);
+
+  const initializeLLMClient = async (provider: LLMProvider, model: string, apiKey: string, baseURL?: string) => {
     try {
       const client = new LLMClient({
         provider,
         model,
         apiKey,
+        baseURL,
       });
 
       setLlmClient(client);
@@ -110,7 +132,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
         agent.setLLMClient(client);
       }
     } catch (error) {
-      console.error('Failed to initialize LLM client:', error);
+      logger.error('Failed to initialize LLM client:', error);
       throw error;
     }
   };
@@ -119,16 +141,23 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     setSelectedProvider(provider);
     setSelectedModel(model);
     
+    // For local provider, always show wizard for configuration
+    if (provider === 'local') {
+      setAppState('local-llm-wizard');
+      return;
+    }
+    
     // Check if we have API key for this provider
     const apiKey = await getApiKey(provider);
+    const baseURL = await getBaseURL(provider);
     
     if (apiKey) {
       try {
-        await initializeLLMClient(provider, model, apiKey);
+        await initializeLLMClient(provider, model, apiKey, baseURL);
         await updateProviderSettings(provider, model);
         setAppState('ready');
       } catch (error) {
-        console.error('Failed to initialize with saved API key:', error);
+        logger.error('Failed to initialize with saved API key:', error);
         setNeedsApiKey(true);
         setAppState('api-key-input');
       }
@@ -140,12 +169,13 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
 
   const handleApiKeyInput = async (apiKey: string, saveKey: boolean) => {
     if (!selectedProvider || !selectedModel) {
-      console.error('Provider or model not selected');
+      logger.error('Provider or model not selected');
       return;
     }
 
     try {
-      await initializeLLMClient(selectedProvider, selectedModel, apiKey);
+      const baseURL = await getBaseURL(selectedProvider);
+      await initializeLLMClient(selectedProvider, selectedModel, apiKey, baseURL);
       
       if (saveKey) {
         await saveApiKey(selectedProvider, apiKey);
@@ -154,8 +184,35 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
       await updateProviderSettings(selectedProvider, selectedModel);
       setAppState('ready');
     } catch (error) {
-      console.error('Failed to initialize with API key:', error);
+      logger.error('Failed to initialize with API key:', error);
       // Stay in API key input state to allow retry
+    }
+  };
+
+  const handleLocalLLMWizard = async (config: { baseURL: string; modelName: string; apiKey: string; saveConfig: boolean }) => {
+    if (!selectedProvider) {
+      logger.error('Provider not selected');
+      return;
+    }
+
+    try {
+      // Use the model name from wizard instead of selectedModel
+      await initializeLLMClient(selectedProvider, config.modelName, config.apiKey, config.baseURL);
+      
+      if (config.saveConfig) {
+        if (config.apiKey) {
+          await saveApiKey(selectedProvider, config.apiKey);
+        }
+        await saveBaseURL(selectedProvider, config.baseURL);
+      }
+      
+      // Update settings with the model name from wizard
+      await updateProviderSettings(selectedProvider, config.modelName);
+      setSelectedModel(config.modelName);
+      setAppState('ready');
+    } catch (error) {
+      logger.error('Failed to initialize local LLM:', error);
+      // Stay in wizard state to allow retry
     }
   };
 
@@ -167,117 +224,14 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     setAppState('provider-selection');
   };
 
-  useInput(async (inputChar: string, key: any) => {
-    // Only handle input when app is ready and no confirmation dialog
-    if (appState !== 'ready' || confirmationOptions) {
-      return;
-    }
-
-    if (key.ctrl && inputChar === 'c') {
-      exit();
-      return;
-    }
-
-    // Add shortcut to change provider/model
-    if (key.ctrl && inputChar === 'p') {
-      setAppState('provider-selection');
-      return;
-    }
-
-    if (key.return) {
-      if (input.trim() === 'exit' || input.trim() === 'quit') {
-        exit();
-        return;
-      }
-
-      if (input.trim() === 'provider' || input.trim() === 'switch') {
-        setAppState('provider-selection');
-        setInput('');
-        return;
-      }
-
-      if (input.trim() && agent) {
-        setIsProcessing(true);
-        try {
-          const entries = await agent.processUserMessage(input.trim());
-          // Convert chat entries to the expected format for history
-          const lastEntry = entries[entries.length - 1];
-          const result: ToolResult = {
-            success: lastEntry.type !== 'assistant' || !lastEntry.content.includes('error'),
-            output: lastEntry.content,
-            error: lastEntry.type === 'assistant' && lastEntry.content.includes('error') ? lastEntry.content : undefined
-          };
-          setHistory(prev => [...prev, { command: input.trim(), result }]);
-        } catch (error: any) {
-          const result: ToolResult = {
-            success: false,
-            error: error.message
-          };
-          setHistory(prev => [...prev, { command: input.trim(), result }]);
-        }
-        setInput('');
-        setIsProcessing(false);
-      }
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      setInput(prev => prev.slice(0, -1));
-      return;
-    }
-
-    if (inputChar && !key.ctrl && !key.meta) {
-      setInput(prev => prev + inputChar);
-    }
-  });
-
-  const renderResult = (result: ToolResult) => {
-    if (result.success) {
-      return (
-        <Box flexDirection="column" marginBottom={1}>
-          <Text color="green">✓ Success</Text>
-          {result.output && (
-            <Box marginLeft={2}>
-              <Text>{result.output}</Text>
-            </Box>
-          )}
-        </Box>
-      );
-    } else {
-      return (
-        <Box flexDirection="column" marginBottom={1}>
-          <Text color="red">✗ Error</Text>
-          {result.error && (
-            <Box marginLeft={2}>
-              <Text color="red">{result.error}</Text>
-            </Box>
-          )}
-        </Box>
-      );
-    }
+  const handleLocalLLMWizardCancel = () => {
+    setAppState('provider-selection');
   };
 
-  const handleConfirmation = (dontAskAgain?: boolean) => {
-    confirmationService.confirmOperation(true, dontAskAgain);
-    setConfirmationOptions(null);
-  };
 
-  const handleRejection = (feedback?: string) => {
-    confirmationService.rejectOperation(feedback);
-    setConfirmationOptions(null);
-  };
 
-  if (confirmationOptions) {
-    return (
-      <ConfirmationDialog
-        operation={confirmationOptions.operation}
-        filename={confirmationOptions.filename}
-        showVSCodeOpen={confirmationOptions.showVSCodeOpen}
-        onConfirm={handleConfirmation}
-        onReject={handleRejection}
-      />
-    );
-  }
+  // Remove the early return for confirmation dialog
+  // We'll handle it in the main render section
 
   if (appState === 'loading') {
     return (
@@ -308,53 +262,30 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
     );
   }
 
-  if (appState === 'ready') {
+  if (appState === 'local-llm-wizard') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Box marginBottom={1}>
-          <Text bold color="cyan">
-            🔧 JURIKO CLI - Text Editor Agent
-          </Text>
+      <LocalLLMWizard
+        onSubmit={handleLocalLLMWizard}
+        onCancel={handleLocalLLMWizardCancel}
+      />
+    );
+  }
+
+  if (appState === 'ready' && agent) {
+    return (
+      <Box flexDirection="column" height="100%">
+        <Box flexGrow={1}>
+          <StreamingChat
+            key="streaming-chat" // Add key to prevent re-mounting
+            agent={agent}
+            onProviderSwitch={() => setAppState('provider-selection')}
+            onTokenCountChange={setTokenCount}
+          />
         </Box>
         
-        <Box marginBottom={1}>
-          <Text color="green">
-            Provider: {selectedProvider?.toUpperCase()} | Model: {selectedModel}
-          </Text>
-        </Box>
-        
-        <Box flexDirection="column" marginBottom={1}>
-          <Text dimColor>
-            Available commands: view, str_replace, create, insert, undo_edit, bash, help
-          </Text>
-          <Text dimColor>
-            Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit
-          </Text>
-          <Text dimColor>
-            Press Ctrl+P to quickly switch provider/model
-          </Text>
-        </Box>
-
-        <Box flexDirection="column" marginBottom={1}>
-          {history.slice(-10).map((entry, index) => (
-            <Box key={index} flexDirection="column" marginBottom={1}>
-              <Box>
-                <Text color="blue">$ </Text>
-                <Text>{entry.command}</Text>
-              </Box>
-              {renderResult(entry.result)}
-            </Box>
-          ))}
-        </Box>
-
-        <Box>
-          <Text color="blue">$ </Text>
-          <Text>
-            {input}
-            {!isProcessing && <Text color="white">█</Text>}
-          </Text>
-          {isProcessing && <Text color="yellow"> (processing...)</Text>}
-        </Box>
+        {selectedProvider && selectedModel && (
+          <StatusBar provider={selectedProvider} model={selectedModel} tokenCount={tokenCount} />
+        )}
       </Box>
     );
   }

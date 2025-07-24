@@ -37,10 +37,17 @@ export const MultiProviderApiKeyInput: React.FC<MultiProviderApiKeyInputProps> =
         };
       case 'grok':
         return {
-          name: 'Grok (X.AI)',
+          name: 'X.AI (Grok)',
           envVar: 'GROK_API_KEY',
           placeholder: 'xai-...',
           description: 'Get your API key from https://console.x.ai/',
+        };
+      case 'local':
+        return {
+          name: 'Local LLM',
+          envVar: 'LOCAL_LLM_API_KEY',
+          placeholder: 'your-api-key or leave empty',
+          description: 'Configure your local LLM endpoint (e.g., Ollama, LM Studio, etc.)',
         };
       default:
         return {

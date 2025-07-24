@@ -1,6 +1,6 @@
-import { GrokTool } from "./client";
+import { JurikoTool } from "./client";
 
-export const GROK_TOOLS: GrokTool[] = [
+export const JURIKO_TOOLS: JurikoTool[] = [
   {
     type: "function",
     function: {
@@ -94,7 +94,7 @@ export const GROK_TOOLS: GrokTool[] = [
     type: "function",
     function: {
       name: "create_todo_list",
-      description: "Create a new todo list for planning and tracking tasks",
+      description: "Create a new todo list for planning and tracking tasks. IDs will be auto-generated if not provided.",
       parameters: {
         type: "object",
         properties: {
@@ -106,11 +106,15 @@ export const GROK_TOOLS: GrokTool[] = [
               properties: {
                 id: {
                   type: "string",
-                  description: "Unique identifier for the todo item",
+                  description: "Unique identifier for the todo item (optional - will be auto-generated if not provided)",
+                },
+                task: {
+                  type: "string",
+                  description: "Description of the task item",
                 },
                 content: {
                   type: "string",
-                  description: "Description of the todo item",
+                  description: "Alternative field for todo description (use either content or task)",
                 },
                 status: {
                   type: "string",
@@ -123,7 +127,11 @@ export const GROK_TOOLS: GrokTool[] = [
                   description: "Priority level of the todo item",
                 },
               },
-              required: ["id", "content", "status", "priority"],
+              required: ["status", "priority"],
+              anyOf: [
+                { required: ["task"] },
+                { required: ["content"] }
+              ]
             },
           },
         },
@@ -145,26 +153,17 @@ export const GROK_TOOLS: GrokTool[] = [
             items: {
               type: "object",
               properties: {
-                id: {
-                  type: "string",
+                index: {
+                  type: "number",
                   description: "ID of the todo item to update",
                 },
                 status: {
                   type: "string",
                   enum: ["pending", "in_progress", "completed"],
                   description: "New status for the todo item",
-                },
-                content: {
-                  type: "string",
-                  description: "New content for the todo item",
-                },
-                priority: {
-                  type: "string",
-                  enum: ["high", "medium", "low"],
-                  description: "New priority for the todo item",
-                },
+                }
               },
-              required: ["id"],
+              required: ["index","status"],
             },
           },
         },

@@ -8,6 +8,8 @@ import AppWithProvider from "./ui/app-with-provider";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+const packageJson = require("../package.json");
+import { logger } from "./utils/logger";
 
 // Load environment variables
 dotenv.config();
@@ -63,7 +65,7 @@ program
   .description(
     "JURIKO - A conversational AI CLI tool with text editor capabilities"
   )
-  .version("0.0.3")
+  .version(packageJson.version)
   .option("-d, --directory <dir>", "set working directory", process.cwd())
   .option("-k, --api-key <key>", "AI API key (or set JURIKO_API_KEY env var)")
   .option("-u, --base-url <url>", "AI API base URL (or set JURIKO_BASE_URL env var)")
@@ -72,7 +74,7 @@ program
       try {
         process.chdir(options.directory);
       } catch (error: any) {
-        console.error(
+        logger.error(
           `Error changing directory to ${options.directory}:`,
           error.message
         );
@@ -84,14 +86,13 @@ program
       // Set API keys from command line options if provided
       if (options.apiKey) {
         process.env.JURIKO_API_KEY = options.apiKey;
-        process.env.GROK_API_KEY = options.apiKey; // For backward compatibility
       }
 
-      console.log("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
+      logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
 
       render(React.createElement(AppWithProvider, {}));
     } catch (error: any) {
-      console.error("❌ Error initializing JURIKO CLI:", error.message);
+      logger.error("❌ Error initializing JURIKO CLI:", error.message);
       process.exit(1);
     }
   });

@@ -302,7 +302,7 @@ Current working directory: ${process.cwd()}`,
           // Add assistant message to conversation
           this.messages.push({
             role: "assistant",
-            content: assistantMessage.content || "",
+            content: assistantMessage.content || "Using tools to help you...",
             tool_calls: assistantMessage.tool_calls,
           });
 
@@ -349,7 +349,7 @@ Current working directory: ${process.cwd()}`,
           this.chatHistory.push(finalEntry);
           this.messages.push({
             role: "assistant",
-            content: assistantMessage.content || "",
+            content: assistantMessage.content || "I understand, but I don't have a specific response.",
           });
           newEntries.push(finalEntry);
           break; // Exit the loop
@@ -376,6 +376,313 @@ Current working directory: ${process.cwd()}`,
       };
       this.chatHistory.push(errorEntry);
       return [userEntry, errorEntry];
+    }
+  }
+
+  private messageReducer(previous: any, item: any): any {
+    const reduce = (acc: any, delta: any) => {
+      acc = { ...acc };
+      for (const [key, value] of Object.entries(delta)) {
+        if (acc[key] === undefined || acc[key] === null) {
+          acc[key] = value;
+          // Clean up index properties from tool calls
+          if (Array.isArray(acc[key])) {
+            for (const arr of acc[key]) {
+              delete arr.index;
+            }
+          }
+        } else if (typeof acc[key] === "string" && typeof value === "string") {
+          (acc[key] as string) += value;
+        } else if (Array.isArray(acc[key]) && Array.isArray(value)) {
+          const accArray = acc[key] as any[];
+          for (let i = 0; i < value.length; i++) {
+            // Special handling for tool calls - merge function properties properly
+            if (key === "tool_calls") {
+              // Handle streaming tool calls with index
+              let targetIndex = i;
+              if (value[i].index !== undefined) {
+                // Use the index from the streaming chunk to find the correct tool call
+                targetIndex = value[i].index;
+              }
+              
+              
+              // Ensure we have an array slot for this index
+              if (!accArray[targetIndex]) accArray[targetIndex] = {};
+              
+              // Initialize function object if it doesn't exist
+              if (!accArray[targetIndex].function) {
+                accArray[targetIndex].function = {};
+              }
+              
+              // Handle the case where we have new function data
+              if (value[i].function) {
+                // Merge function name
+                if (value[i].function.name) {
+                  accArray[targetIndex].function.name = value[i].function.name;
+                }
+                
+                // Handle arguments
+                if (value[i].function.arguments !== undefined) {
+                  if (!accArray[targetIndex].function.arguments) {
+                    // First time getting arguments - set them directly
+                    accArray[targetIndex].function.arguments = value[i].function.arguments;
+                  } else {
+                    // Accumulate arguments if both exist (for streaming JSON)
+                    if (typeof accArray[targetIndex].function.arguments === "string" &&
+                        typeof value[i].function.arguments === "string") {
+                      // For streaming JSON fragments, concatenate them
+                      accArray[targetIndex].function.arguments += value[i].function.arguments;
+                    } else {
+                      // For complete arguments, use the new value
+                      accArray[targetIndex].function.arguments = value[i].function.arguments;
+                    }
+                  }
+                }
+              }
+              
+              // Merge other properties from the tool call (but not index)
+              for (const [tcKey, tcValue] of Object.entries(value[i])) {
+                if (tcKey !== 'function' && tcKey !== 'index' && tcValue !== undefined) {
+                  accArray[targetIndex][tcKey] = tcValue;
+                }
+              }
+            } else {
+              // Regular reduction for non-tool-call arrays
+              if (!accArray[i]) accArray[i] = {};
+              accArray[i] = reduce(accArray[i], value[i]);
+            }
+          }
+        } else if (typeof acc[key] === "object" && typeof value === "object") {
+          acc[key] = reduce(acc[key], value);
+        }
+      }
+      return acc;
+    };
+
+    return reduce(previous, item.choices[0]?.delta || {});
+  }
+
+  async *processUserMessageStream(
+    message: string
+  ): AsyncGenerator<StreamingChunk, void, unknown> {
+    // Create new abort controller for this request
+    this.abortController = new AbortController();
+
+    // Add user message to conversation
+    const userEntry: ChatEntry = {
+      type: "user",
+      content: message,
+      timestamp: new Date(),
+    };
+    this.chatHistory.push(userEntry);
+    this.messages.push({ role: "user", content: message });
+
+    // Calculate input tokens
+    const inputTokens = this.tokenCounter.countMessageTokens(
+      this.messages as any
+    );
+    yield {
+      type: "token_count",
+      tokenCount: inputTokens,
+    };
+
+    const maxToolRounds = 30; // Prevent infinite loops
+    let toolRounds = 0;
+    let totalOutputTokens = 0;
+
+    try {
+      // Agent loop - continue until no more tool calls or max rounds reached
+      while (toolRounds < maxToolRounds) {
+        // Check if operation was cancelled
+        if (this.abortController?.signal.aborted) {
+          yield {
+            type: "content",
+            content: "\n\n[Operation cancelled by user]",
+          };
+          yield { type: "done" };
+          return;
+        }
+
+        // Stream response and accumulate
+        const stream = this.llmClient.chatStream(
+          this.messages,
+          MULTI_LLM_TOOLS
+        );
+        let accumulatedMessage: any = {};
+        let accumulatedContent = "";
+        let toolCallsYielded = false;
+
+        for await (const chunk of stream) {
+          // Check for cancellation in the streaming loop
+          if (this.abortController?.signal.aborted) {
+            yield {
+              type: "content",
+              content: "\n\n[Operation cancelled by user]",
+            };
+            yield { type: "done" };
+            return;
+          }
+
+          if (!chunk.choices?.[0]) continue;
+
+          // Accumulate the message using reducer
+          accumulatedMessage = this.messageReducer(accumulatedMessage, chunk);
+
+          // Check for tool calls - yield when we have complete tool calls with function names AND arguments
+          if (!toolCallsYielded && accumulatedMessage.tool_calls?.length > 0) {
+            // Check if we have at least one complete tool call with both function name and arguments
+            const hasCompleteTool = accumulatedMessage.tool_calls.some(
+              (tc: any) => tc.function?.name && tc.function?.arguments
+            );
+            if (hasCompleteTool) {
+              yield {
+                type: "tool_calls",
+                toolCalls: accumulatedMessage.tool_calls,
+              };
+              toolCallsYielded = true;
+            }
+          }
+
+          // Stream content as it comes
+          if (chunk.choices[0].delta?.content) {
+            accumulatedContent += chunk.choices[0].delta.content;
+
+            // Update token count in real-time
+            const currentOutputTokens =
+              this.tokenCounter.estimateStreamingTokens(accumulatedContent);
+            totalOutputTokens = currentOutputTokens;
+
+            yield {
+              type: "content",
+              content: chunk.choices[0].delta.content,
+            };
+
+            // Emit token count update
+            yield {
+              type: "token_count",
+              tokenCount: inputTokens + totalOutputTokens,
+            };
+          }
+        }
+
+        // Add assistant entry to history
+        const assistantEntry: ChatEntry = {
+          type: "assistant",
+          content: accumulatedMessage.content || "Using tools to help you...",
+          timestamp: new Date(),
+          toolCalls: accumulatedMessage.tool_calls || undefined,
+        };
+        this.chatHistory.push(assistantEntry);
+
+        // Add accumulated message to conversation
+        this.messages.push({
+          role: "assistant",
+          content: accumulatedMessage.content || "Using tools to help you...",
+          tool_calls: accumulatedMessage.tool_calls,
+        });
+
+        // Handle tool calls if present
+        if (accumulatedMessage.tool_calls?.length > 0) {
+          toolRounds++;
+
+          // Only yield tool_calls if we haven't already yielded them during streaming
+          // AND they have complete arguments
+          if (!toolCallsYielded) {
+            // Check if all tool calls have both name and arguments before yielding
+            const allToolCallsComplete = accumulatedMessage.tool_calls.every(
+              (tc: any) => tc.function?.name && tc.function?.arguments
+            );
+            
+            if (allToolCallsComplete) {
+              yield {
+                type: "tool_calls",
+                toolCalls: accumulatedMessage.tool_calls,
+              };
+            }
+          }
+
+          // Execute tools
+          for (const toolCall of accumulatedMessage.tool_calls) {
+            // Check for cancellation before executing each tool
+            if (this.abortController?.signal.aborted) {
+              yield {
+                type: "content",
+                content: "\n\n[Operation cancelled by user]",
+              };
+              yield { type: "done" };
+              return;
+            }
+
+            const result = await this.executeTool(toolCall);
+
+            const toolResultEntry: ChatEntry = {
+              type: "tool_result",
+              content: result.success
+                ? result.output || "Success"
+                : result.error || "Error occurred",
+              timestamp: new Date(),
+              toolCall: toolCall,
+              toolResult: result,
+            };
+            this.chatHistory.push(toolResultEntry);
+
+            yield {
+              type: "tool_result",
+              toolCall,
+              toolResult: result,
+            };
+
+            // Add tool result with proper format (needed for AI context)
+            this.messages.push({
+              role: "tool",
+              content: result.success
+                ? result.output || "Success"
+                : result.error || "Error",
+              tool_call_id: toolCall.id,
+            });
+          }
+
+          // Continue the loop to get the next response (which might have more tool calls)
+        } else {
+          // No tool calls, we're done
+          break;
+        }
+      }
+
+      if (toolRounds >= maxToolRounds) {
+        yield {
+          type: "content",
+          content:
+            "\n\nMaximum tool execution rounds reached. Stopping to prevent infinite loops.",
+        };
+      }
+
+      yield { type: "done" };
+    } catch (error: any) {
+      // Check if this was a cancellation
+      if (this.abortController?.signal.aborted) {
+        yield {
+          type: "content",
+          content: "\n\n[Operation cancelled by user]",
+        };
+        yield { type: "done" };
+        return;
+      }
+
+      const errorEntry: ChatEntry = {
+        type: "assistant",
+        content: `Sorry, I encountered an error: ${error.message}`,
+        timestamp: new Date(),
+      };
+      this.chatHistory.push(errorEntry);
+      yield {
+        type: "content",
+        content: errorEntry.content,
+      };
+      yield { type: "done" };
+    } finally {
+      // Clean up abort controller
+      this.abortController = null;
     }
   }
 

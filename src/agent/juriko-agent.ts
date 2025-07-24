@@ -1,5 +1,5 @@
-import { GrokClient, GrokMessage, GrokToolCall } from "../grok/client";
-import { GROK_TOOLS } from "../grok/tools";
+import { JurikoClient, JurikoMessage, JurikoToolCall } from "../juriko/client";
+import { JURIKO_TOOLS } from "../juriko/tools";
 import { TextEditorTool, BashTool, TodoTool, ConfirmationTool } from "../tools";
 import { ToolResult } from "../types";
 import { EventEmitter } from "events";
@@ -10,8 +10,8 @@ export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
   content: string;
   timestamp: Date;
-  toolCalls?: GrokToolCall[];
-  toolCall?: GrokToolCall;
+  toolCalls?: JurikoToolCall[];
+  toolCall?: JurikoToolCall;
   toolResult?: { success: boolean; output?: string; error?: string };
   isStreaming?: boolean;
 }
@@ -19,26 +19,26 @@ export interface ChatEntry {
 export interface StreamingChunk {
   type: "content" | "tool_calls" | "tool_result" | "done" | "token_count";
   content?: string;
-  toolCalls?: GrokToolCall[];
-  toolCall?: GrokToolCall;
+  toolCalls?: JurikoToolCall[];
+  toolCall?: JurikoToolCall;
   toolResult?: ToolResult;
   tokenCount?: number;
 }
 
 export class JurikoAgent extends EventEmitter {
-  private grokClient: GrokClient;
+  private jurikoClient: JurikoClient;
   private textEditor: TextEditorTool;
   private bash: BashTool;
   private todoTool: TodoTool;
   private confirmationTool: ConfirmationTool;
   private chatHistory: ChatEntry[] = [];
-  private messages: GrokMessage[] = [];
+  private messages: JurikoMessage[] = [];
   private tokenCounter: TokenCounter;
   private abortController: AbortController | null = null;
 
   constructor(apiKey: string, baseURL?: string) {
     super();
-    this.grokClient = new GrokClient(apiKey, undefined, baseURL);
+    this.jurikoClient = new JurikoClient(apiKey, undefined, baseURL);
     this.textEditor = new TextEditorTool();
     this.bash = new BashTool();
     this.todoTool = new TodoTool();
@@ -128,9 +128,9 @@ Current working directory: ${process.cwd()}`,
     let toolRounds = 0;
 
     try {
-      let currentResponse = await this.grokClient.chat(
+      let currentResponse = await this.jurikoClient.chat(
         this.messages,
-        GROK_TOOLS,
+        JURIKO_TOOLS,
         undefined,
         { search_parameters: { mode: "auto" } }
       );
@@ -163,7 +163,7 @@ Current working directory: ${process.cwd()}`,
           // Add assistant message to conversation
           this.messages.push({
             role: "assistant",
-            content: assistantMessage.content || "",
+            content: assistantMessage.content || "Using tools to help you...",
             tool_calls: assistantMessage.tool_calls,
           } as any);
 
@@ -194,9 +194,9 @@ Current working directory: ${process.cwd()}`,
           }
 
           // Get next response - this might contain more tool calls
-          currentResponse = await this.grokClient.chat(
+          currentResponse = await this.jurikoClient.chat(
             this.messages,
-            GROK_TOOLS,
+            JURIKO_TOOLS,
             undefined,
             { search_parameters: { mode: "auto" } }
           );
@@ -212,7 +212,7 @@ Current working directory: ${process.cwd()}`,
           this.chatHistory.push(finalEntry);
           this.messages.push({
             role: "assistant",
-            content: assistantMessage.content || "",
+            content: assistantMessage.content || "I understand, but I don't have a specific response.",
           });
           newEntries.push(finalEntry);
           break; // Exit the loop
@@ -314,9 +314,9 @@ Current working directory: ${process.cwd()}`,
         }
 
         // Stream response and accumulate
-        const stream = this.grokClient.chatStream(
+        const stream = this.jurikoClient.chatStream(
           this.messages,
-          GROK_TOOLS,
+          JURIKO_TOOLS,
           undefined,
           { search_parameters: { mode: "auto" } }
         );
@@ -389,7 +389,7 @@ Current working directory: ${process.cwd()}`,
         // Add accumulated message to conversation
         this.messages.push({
           role: "assistant",
-          content: accumulatedMessage.content || "",
+          content: accumulatedMessage.content || "Using tools to help you...",
           tool_calls: accumulatedMessage.tool_calls,
         } as any);
 
@@ -490,7 +490,7 @@ Current working directory: ${process.cwd()}`,
     }
   }
 
-  private async executeTool(toolCall: GrokToolCall): Promise<ToolResult> {
+  private async executeTool(toolCall: JurikoToolCall): Promise<ToolResult> {
     try {
       const args = JSON.parse(toolCall.function.arguments);
 
@@ -548,11 +548,11 @@ Current working directory: ${process.cwd()}`,
   }
 
   getCurrentModel(): string {
-    return this.grokClient.getCurrentModel();
+    return this.jurikoClient.getCurrentModel();
   }
 
   setModel(model: string): void {
-    this.grokClient.setModel(model);
+    this.jurikoClient.setModel(model);
     // Update token counter for new model
     this.tokenCounter.dispose();
     this.tokenCounter = createTokenCounter(model);
@@ -564,6 +564,3 @@ Current working directory: ${process.cwd()}`,
     }
   }
 }
-
-// Keep GrokAgent as an alias for backward compatibility during transition
-export const GrokAgent = JurikoAgent;

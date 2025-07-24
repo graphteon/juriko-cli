@@ -2,11 +2,11 @@
 
 A conversational AI CLI tool with intelligent text editor capabilities and tool usage.
 
-<img width="980" height="435" alt="Screenshot 2025-07-21 at 13 35 41" src="" />
+<img width="1039" height="490" alt="Screenshot 2025-07-21 at 13 35 41" src="blobs/welcome.png" />
 
 ## Features
 
-- **🤖 Multi-LLM Provider Support**: Choose from Anthropic Claude, OpenAI GPT, or Grok models
+- **🤖 Multi-LLM Provider Support**: Choose from Anthropic Claude, OpenAI GPT, Grok, or Local LLM models
 - **🎯 Interactive Provider Selection**: Easy-to-use interface for selecting providers and models at startup
 - **📝 Smart File Operations**: AI automatically uses tools to view, create, and edit files
 - **⚡ Bash Integration**: Execute shell commands through natural conversation
@@ -19,10 +19,11 @@ A conversational AI CLI tool with intelligent text editor capabilities and tool 
 
 ### Prerequisites
 - Node.js 16+
-- API key from at least one supported provider:
+- API key from at least one supported provider (or a local LLM server):
   - **Anthropic Claude**: Get your key from [console.anthropic.com](https://console.anthropic.com/)
   - **OpenAI**: Get your key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
   - **Grok (X.AI)**: Get your key from [console.x.ai](https://console.x.ai/)
+  - **Local LLM**: Set up a local server (LM Studio, Ollama, llama.cpp, etc.)
 
 ### Global Installation (Recommended)
 ```bash
@@ -54,6 +55,10 @@ export OPENAI_API_KEY=your_openai_key_here
 
 # Grok (X.AI)
 export GROK_API_KEY=your_grok_key_here
+
+# Local LLM (optional)
+export LOCAL_API_KEY=your_local_api_key_here
+export LOCAL_BASE_URL=http://localhost:1234/v1
 ```
 
 **Method 2: .env File**
@@ -74,20 +79,65 @@ Create `~/.juriko/user-settings.json`:
 ```json
 {
   "provider": "anthropic",
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-3-7-sonnet-latest",
   "apiKeys": {
     "anthropic": "your_anthropic_key_here",
     "openai": "your_openai_key_here",
-    "grok": "your_grok_key_here"
+    "grok": "your_grok_key_here",
+    "local": "your_local_api_key_here"
+  },
+  "baseURLs": {
+    "local": "http://localhost:1234/v1"
   }
 }
 ```
+
+### Local LLM Setup
+
+JURIKO supports connecting to local LLM servers that expose OpenAI-compatible APIs. This includes popular local LLM solutions like:
+
+- **LM Studio**: Download and run models locally with a user-friendly interface
+- **Ollama**: Lightweight, extensible framework for running LLMs locally
+- **llama.cpp**: Direct C++ implementation for running LLaMA models
+- **Text Generation WebUI**: Web interface for running various LLM models
+- **vLLM**: High-throughput LLM serving engine
+- **LocalAI**: OpenAI-compatible API for local models
+
+#### Quick Setup Examples
+
+**LM Studio:**
+1. Download and install [LM Studio](https://lmstudio.ai/)
+2. Download a model (e.g., Llama 2, Code Llama, Mistral)
+3. Start the local server (usually runs on `http://localhost:1234/v1`)
+4. Select "Local" provider in JURIKO and use the wizard
+
+**Ollama:**
+1. Install [Ollama](https://ollama.ai/)
+2. Pull a model: `ollama pull llama2`
+3. Start Ollama server: `ollama serve` (runs on `http://localhost:11434/v1`)
+4. Select "Local" provider in JURIKO and configure
+
+**llama.cpp:**
+1. Build llama.cpp with server support
+2. Start server: `./server -m model.gguf --port 8080`
+3. Use `http://localhost:8080/v1` as base URL in JURIKO
+
+#### Local LLM Configuration Wizard
+
+When you select "Local" as your provider, JURIKO will guide you through a 4-step configuration wizard:
+
+1. **Base URL**: Enter your local server URL (e.g., `http://localhost:1234/v1`)
+2. **Model Name**: Specify the model name your server uses
+3. **API Key**: Enter API key if your local server requires authentication (optional)
+4. **Save Configuration**: Choose whether to save settings for future use
+
+The wizard includes helpful examples and validates your configuration before proceeding.
 
 ### Provider Selection
 
 When you first run JURIKO, you'll be presented with an interactive interface to:
 
-1. **Select your preferred LLM provider** (Anthropic, OpenAI, or Grok)
+1. **Select your preferred LLM provider** (Anthropic, OpenAI, Grok, or Local)
 2. **Choose a model** from the available options for that provider
 3. **Enter your API key** if not already configured
 4. **Save your preferences** for future sessions
@@ -100,9 +150,12 @@ You can change providers anytime by:
 ### Supported Models
 
 **Anthropic Claude:**
-- `claude-3-5-sonnet-20241022` (Latest Sonnet)
+- `claude-3-7-sonnet-latest` (Latest Claude 3.7 Sonnet)
+- `claude-sonnet-4-20250514` (Claude Sonnet 4)
+- `claude-opus-4-20250514` (Claude Opus 4)
+- `claude-3-5-sonnet-20241022` (Claude 3.5 Sonnet)
 - `claude-3-5-haiku-20241022` (Fast and efficient)
-- `claude-3-opus-20240229` (Most capable)
+- `claude-3-opus-20240229` (Most capable Claude 3)
 
 **OpenAI:**
 - `gpt-4o` (Latest GPT-4 Omni)
@@ -113,6 +166,10 @@ You can change providers anytime by:
 **Grok (X.AI):**
 - `grok-beta` (Latest Grok model)
 - `grok-vision-beta` (With vision capabilities)
+
+**Local LLM:**
+- `custom-model` (Your custom local model)
+- Configure any model name through the setup wizard
 
 ## Usage
 
@@ -177,6 +234,29 @@ Instead of typing commands, just tell JURIKO what you want to do:
 💬 "What's the current directory structure?"
 ```
 
+### Using with Local LLMs
+
+JURIKO works seamlessly with local LLM servers. Here are some examples:
+
+```bash
+# Using with LM Studio (Code Llama for coding tasks)
+juriko  # Select Local provider, use http://localhost:1234/v1
+
+# Using with Ollama (Llama 2 for general tasks)
+ollama serve
+juriko  # Select Local provider, use http://localhost:11434/v1
+
+# Using with custom llama.cpp server
+./server -m codellama-7b.gguf --port 8080
+juriko  # Select Local provider, use http://localhost:8080/v1
+```
+
+Local LLMs are particularly useful for:
+- **Privacy-sensitive projects** where you don't want to send code to external APIs
+- **Offline development** when internet connectivity is limited
+- **Cost optimization** for high-volume usage
+- **Custom fine-tuned models** specific to your domain or coding style
+
 ## Development
 
 ```bash
@@ -198,13 +278,13 @@ npm run typecheck
 
 ## Architecture
 
-- **Multi-LLM Client**: Unified interface supporting Anthropic, OpenAI, and Grok APIs
-- **Provider Selection**: Interactive UI for choosing providers and models
+- **Multi-LLM Client**: Unified interface supporting Anthropic, OpenAI, Grok, and Local LLM APIs
+- **Provider Selection**: Interactive UI for choosing providers and models with local LLM wizard
 - **Agent**: Core command processing and execution logic with multi-provider support
 - **Tools**: Text editor and bash tool implementations
-- **UI**: Ink-based terminal interface components with provider management
-- **Settings**: Persistent user preferences and API key management
-- **Types**: TypeScript definitions for the entire system
+- **UI**: Ink-based terminal interface components with provider management and local LLM configuration
+- **Settings**: Persistent user preferences, API key management, and local server configuration
+- **Types**: TypeScript definitions for the entire system including local LLM support
 
 ## License
 

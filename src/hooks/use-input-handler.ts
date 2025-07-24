@@ -57,11 +57,11 @@ export function useInputHandler({
   const availableModels: ModelOption[] = [
     {
       model: "grok-4-latest",
-      description: "Latest Grok-4 model (most capable)",
+      description: "Latest X.AI Grok-4 model (most capable)",
     },
-    { model: "grok-3-latest", description: "Latest Grok-3 model" },
-    { model: "grok-3-fast", description: "Fast Grok-3 variant" },
-    { model: "grok-3-mini-fast", description: "Fastest Grok-3 variant" },
+    { model: "grok-3-latest", description: "Latest X.AI Grok-3 model" },
+    { model: "grok-3-fast", description: "Fast X.AI Grok-3 variant" },
+    { model: "grok-3-mini-fast", description: "Fastest X.AI Grok-3 variant" },
   ];
 
   const handleDirectCommand = async (input: string): Promise<boolean> => {
@@ -89,12 +89,12 @@ export function useInputHandler({
     if (trimmedInput === "/help") {
       const helpEntry: ChatEntry = {
         type: "assistant",
-        content: `Grok CLI Help:
+        content: `JURIKO CLI Help:
 
 Built-in Commands:
   /clear      - Clear chat history
   /help       - Show this help
-  /models     - Switch Grok models
+  /models     - Switch AI models
   /exit       - Exit application
   exit, quit  - Exit application
 

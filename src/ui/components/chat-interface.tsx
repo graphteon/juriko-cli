@@ -11,6 +11,7 @@ import ConfirmationDialog from "./confirmation-dialog";
 import { ConfirmationService, ConfirmationOptions } from "../../utils/confirmation-service";
 import ApiKeyInput from "./api-key-input";
 import cfonts from "cfonts";
+import { logger } from "../../utils/logger";
 
 interface ChatInterfaceProps {
   agent?: JurikoAgent;
@@ -52,7 +53,7 @@ function ChatInterfaceWithAgent({ agent }: { agent: JurikoAgent }) {
   });
 
   useEffect(() => {
-    console.clear();
+    logger.clear();
     cfonts.say("JURIKO", {
       font: "3d",
       align: "left",
@@ -65,14 +66,14 @@ function ChatInterfaceWithAgent({ agent }: { agent: JurikoAgent }) {
       env: "node",
     });
 
-    console.log("Tips for getting started:");
-    console.log("1. Ask questions, edit files, or run commands.");
-    console.log("2. Be specific for the best results.");
-    console.log(
+    logger.info("Tips for getting started:");
+    logger.info("1. Ask questions, edit files, or run commands.");
+    logger.info("2. Be specific for the best results.");
+    logger.info(
       "3. Create JURIKO.md files to customize your interactions with JURIKO."
     );
-    console.log("4. /help for more information.");
-    console.log("");
+    logger.info("4. /help for more information.");
+    logger.info("");
 
     setChatHistory([]);
   }, []);
