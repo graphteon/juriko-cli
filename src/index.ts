@@ -8,6 +8,7 @@ import AppWithProvider from "./ui/app-with-provider";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+const packageJson = require("../package.json");
 import { logger } from "./utils/logger";
 
 // Load environment variables
@@ -64,7 +65,7 @@ program
   .description(
     "JURIKO - A conversational AI CLI tool with text editor capabilities"
   )
-  .version("0.0.5")
+  .version(packageJson.version)
   .option("-d, --directory <dir>", "set working directory", process.cwd())
   .option("-k, --api-key <key>", "AI API key (or set JURIKO_API_KEY env var)")
   .option("-u, --base-url <url>", "AI API base URL (or set JURIKO_BASE_URL env var)")
