@@ -33,10 +33,14 @@ export class MCPToolsIntegration {
    * Convert MCP tool to Juriko tool format
    */
   private convertMCPToolToJuriko(mcpTool: MCPTool): JurikoTool {
+    const sanitizedServerName = this.sanitizeToolName(mcpTool.serverName);
+    const sanitizedToolName = this.sanitizeToolName(mcpTool.name);
+    const fullToolName = `mcp_${sanitizedServerName}_${sanitizedToolName}`;
+    
     return {
       type: 'function',
       function: {
-        name: `mcp_${mcpTool.serverName}_${mcpTool.name}`,
+        name: fullToolName,
         description: `[MCP:${mcpTool.serverName}] ${mcpTool.description}`,
         parameters: {
           type: 'object',
@@ -45,6 +49,32 @@ export class MCPToolsIntegration {
         }
       }
     };
+  }
+
+  /**
+   * Sanitize tool name to match pattern ^[a-zA-Z0-9_-]{1,128}$
+   */
+  private sanitizeToolName(name: string): string {
+    // Replace any character that's not alphanumeric, underscore, or hyphen with underscore
+    let sanitized = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    
+    // Remove consecutive underscores
+    sanitized = sanitized.replace(/_+/g, '_');
+    
+    // Remove leading/trailing underscores
+    sanitized = sanitized.replace(/^_+|_+$/g, '');
+    
+    // Ensure it's not empty and not too long
+    if (!sanitized) {
+      sanitized = 'tool';
+    }
+    
+    // Truncate to 64 characters to leave room for prefixes
+    if (sanitized.length > 64) {
+      sanitized = sanitized.substring(0, 64);
+    }
+    
+    return sanitized;
   }
 
   /**
@@ -183,10 +213,23 @@ export class MCPToolsIntegration {
       return null;
     }
     
-    const serverName = withoutPrefix.substring(0, firstUnderscoreIndex);
-    const originalToolName = withoutPrefix.substring(firstUnderscoreIndex + 1);
+    const sanitizedServerName = withoutPrefix.substring(0, firstUnderscoreIndex);
+    const sanitizedToolName = withoutPrefix.substring(firstUnderscoreIndex + 1);
     
-    return { serverName, toolName: originalToolName };
+    // Find the original tool by matching sanitized names
+    const matchingTool = this.mcpTools.find(tool => {
+      const expectedSanitizedServerName = this.sanitizeToolName(tool.serverName);
+      const expectedSanitizedToolName = this.sanitizeToolName(tool.name);
+      return expectedSanitizedServerName === sanitizedServerName &&
+             expectedSanitizedToolName === sanitizedToolName;
+    });
+    
+    if (matchingTool) {
+      return { serverName: matchingTool.serverName, toolName: matchingTool.name };
+    }
+    
+    // Fallback to sanitized names if no match found
+    return { serverName: sanitizedServerName, toolName: sanitizedToolName };
   }
 
   /**

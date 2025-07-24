@@ -304,6 +304,27 @@ Create `~/.juriko/mcp-settings.json` to configure MCP servers:
 }
 ```
 
+Examples :
+
+```json
+{
+  "mcpServers": {
+    "llmtxt": {
+      "type": "sse",
+      "url": "https://mcp.llmtxt.dev/sse",
+      "enabled": true,
+      "description": "LLMTXT MCP server for text processing and utilities",
+      "timeout": 30000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
+    }
+  },
+  "globalTimeout": 30000,
+  "enableLogging": true,
+  "logLevel": "info"
+}
+```
+
 ### Supported MCP Server Types
 
 **Local MCP Servers (stdio):**
