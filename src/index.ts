@@ -64,7 +64,7 @@ program
   .description(
     "JURIKO - A conversational AI CLI tool with text editor capabilities"
   )
-  .version("0.0.3")
+  .version("0.0.5")
   .option("-d, --directory <dir>", "set working directory", process.cwd())
   .option("-k, --api-key <key>", "AI API key (or set JURIKO_API_KEY env var)")
   .option("-u, --base-url <url>", "AI API base URL (or set JURIKO_BASE_URL env var)")

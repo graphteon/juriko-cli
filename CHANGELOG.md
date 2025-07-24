@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.5] - 2024-12-29
+
 ### Added
 - **New Anthropic Models**: Added latest Claude models
   - `claude-3-7-sonnet-latest` (Latest Claude 3.7 Sonnet)
