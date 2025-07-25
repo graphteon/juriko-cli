@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import { JurikoAgent, ChatEntry } from "../../agent/juriko-agent";
 import { useInputHandler } from "../../hooks/use-input-handler";
 import { LoadingSpinner } from "./loading-spinner";
+import { EnhancedLoadingSpinner } from "./enhanced-loading-spinner";
 import { CommandSuggestions } from "./command-suggestions";
 import { ModelSelection } from "./model-selection";
 import { ChatHistory } from "./chat-history";
@@ -132,6 +133,9 @@ function ChatInterfaceWithAgent({ agent }: { agent: JurikoAgent }) {
         <Text dimColor>
           Type your request in natural language. Type 'exit' or Ctrl+C to quit.
         </Text>
+        <Text dimColor>
+          Press 's' to stop current operation, ESC to cancel, or use /help for commands.
+        </Text>
       </Box>
 
       <Box flexDirection="column" ref={scrollRef}>
@@ -153,7 +157,7 @@ function ChatInterfaceWithAgent({ agent }: { agent: JurikoAgent }) {
 
       {!confirmationOptions && (
         <>
-          <LoadingSpinner
+          <EnhancedLoadingSpinner
             isActive={isProcessing || isStreaming}
             processingTime={processingTime}
             tokenCount={tokenCount}

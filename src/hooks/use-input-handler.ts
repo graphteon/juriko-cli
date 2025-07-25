@@ -98,9 +98,14 @@ Built-in Commands:
   /exit       - Exit application
   exit, quit  - Exit application
 
+Keyboard Shortcuts:
+  s           - Stop current operation/conversation
+  ESC         - Cancel current operation
+  Ctrl+C      - Exit application
+
 Direct Commands (executed immediately):
   ls [path]   - List directory contents
-  pwd         - Show current directory  
+  pwd         - Show current directory
   cd <path>   - Change directory
   cat <file>  - View file contents
   mkdir <dir> - Create directory
@@ -364,6 +369,27 @@ Available models: ${modelNames.join(", ")}`,
         setTokenCount(0);
         setProcessingTime(0);
         processingStartTime.current = 0;
+        return;
+      }
+    }
+
+    // Handle 's' key to stop conversation
+    if (inputChar === 's' && !key.ctrl && !key.meta && !key.alt) {
+      if (isProcessing || isStreaming) {
+        agent.abortCurrentOperation();
+        setIsProcessing(false);
+        setIsStreaming(false);
+        setTokenCount(0);
+        setProcessingTime(0);
+        processingStartTime.current = 0;
+        
+        // Add a message to chat history indicating the operation was stopped
+        const stopEntry: ChatEntry = {
+          type: "assistant",
+          content: "⏹️ Operation stopped by user (pressed 's')",
+          timestamp: new Date(),
+        };
+        setChatHistory((prev) => [...prev, stopEntry]);
         return;
       }
     }
