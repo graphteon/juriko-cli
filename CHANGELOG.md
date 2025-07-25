@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-01-25
+
+### Added
+- **Stop Conversation Feature**: Press 's' key to immediately stop ongoing operations
+  - Works during any processing operation or conversation
+  - Graceful cancellation using AbortController
+  - Clear user feedback with stop confirmation message
+- **Enhanced Processing Animation**: New animated loading spinner with improved UX
+  - Rotating spinner frames with smooth animation
+  - Cycling processing messages ("Thinking...", "Processing...", etc.)
+  - Real-time display of processing time and token count
+  - Clear keyboard shortcut instructions during processing
+- **Updated Keyboard Shortcuts**: Comprehensive keyboard control system
+  - `s` - Stop current operation (new)
+  - `ESC` - Cancel current operation
+  - `Ctrl+C` - Exit application
+  - `Ctrl+P` - Switch provider/model (StreamingChat mode)
+- **Enhanced User Instructions**: Updated help and interface messages
+  - Updated `/help` command with keyboard shortcuts
+  - Consistent instruction display across all components
+  - Better user guidance during operations
+
+### Enhanced
+- **Input Handling**: Improved input handlers in both JurikoAgent and MultiLLMAgent modes
+- **User Experience**: Better visual feedback and control during long-running operations
+- **Documentation**: Added comprehensive feature documentation in `docs/STOP_CONVERSATION_FEATURE.md`
+
+### Technical Improvements
+- Leveraged existing AbortController infrastructure for clean cancellation
+- Non-disruptive stopping that maintains application stability
+- Proper state cleanup when operations are cancelled
+- Enhanced component architecture with better separation of concerns
+
 ## [0.0.9] - 2025-01-27
 
 ### Added

@@ -79,7 +79,7 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
   };
 
   useInput(async (inputChar: string, key: any) => {
-    if (!isMountedRef.current || isProcessing || confirmationOptions) return;
+    if (!isMountedRef.current || confirmationOptions) return;
 
     if (key.ctrl && inputChar === 'c') {
       if (isProcessing) {
@@ -94,6 +94,29 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
       onProviderSwitch();
       return;
     }
+
+    // Handle 's' key to stop conversation
+    if (inputChar === 's' && !key.ctrl && !key.meta && !key.alt) {
+      if (isProcessing) {
+        agent.abortCurrentOperation();
+        setIsProcessing(false);
+        setTokenCount(0);
+        
+        // Add a message to indicate the operation was stopped
+        const stopMessage: ChatMessage = {
+          type: 'assistant',
+          content: '⏹️ Operation stopped by user (pressed \'s\')',
+          timestamp: new Date()
+        };
+        if (isMountedRef.current) {
+          setMessages(prev => [...prev, stopMessage]);
+        }
+        return;
+      }
+    }
+
+    // Don't handle other input if processing
+    if (isProcessing) return;
 
     if (key.return) {
       if (input.trim() === 'exit' || input.trim() === 'quit') {
@@ -357,7 +380,7 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
         <Box flexDirection="column" marginBottom={1}>
           <Text dimColor>Available commands: view, str_replace, create, insert, undo_edit, bash, help</Text>
           <Text dimColor>Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit</Text>
-          <Text dimColor>Press Ctrl+P to quickly switch provider/model</Text>
+          <Text dimColor>Press 's' to stop operation, ESC to cancel, Ctrl+P to switch provider/model</Text>
         </Box>
 
         {/* Messages */}

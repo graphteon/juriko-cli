@@ -1,0 +1,28 @@
+"mcpServers": {
+    "browser-use": {
+        "command": "uvx",
+        "args": [
+            "mcp-server-browser-use@latest"
+        ],
+        "env": {
+            "MCP_LLM_OPENROUTER_API_KEY": "YOUR_KEY_HERE_IF_USING_OPENROUTER",
+            "MCP_LLM_PROVIDER": "openrouter",
+            "MCP_LLM_MODEL_NAME": "anthropic/claude-3.5-haiku",
+            "MCP_LLM_TEMPERATURE": "0.4",
+
+            "MCP_BROWSER_HEADLESS": "false",
+            "MCP_BROWSER_WINDOW_WIDTH": "1440",
+            "MCP_BROWSER_WINDOW_HEIGHT": "1080",
+            "MCP_AGENT_TOOL_USE_VISION": "true",
+            
+            "MCP_RESEARCH_TOOL_SAVE_DIR": "/path/to/your/research",
+            "MCP_RESEARCH_TOOL_MAX_PARALLEL_BROWSERS": "5",
+            "MCP_PATHS_DOWNLOADS": "/path/to/your/downloads",
+            "MCP_BROWSER_USE_OWN_BROWSER": "true",
+            "MCP_BROWSER_CDP_URL": "http://localhost:9222",
+            "MCP_AGENT_TOOL_HISTORY_PATH": "/path/to/your/history",
+            "MCP_SERVER_LOGGING_LEVEL": "DEBUG",
+            "MCP_SERVER_LOG_FILE": "/path/to/your/log/mcp_server_browser_use.log",
+        }
+    }
+}
