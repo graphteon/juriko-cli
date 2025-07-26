@@ -1,11 +1,19 @@
 import { JurikoClient, JurikoMessage, JurikoToolCall } from "../juriko/client";
 import { JURIKO_TOOLS } from "../juriko/tools";
-import { TextEditorTool, BashTool, TodoTool, ConfirmationTool } from "../tools";
+import { TextEditorTool, BashTool, TodoTool, ConfirmationTool, CondenseTool } from "../tools";
 import { ToolResult } from "../types";
 import { EventEmitter } from "events";
 import { createTokenCounter, TokenCounter } from "../utils/token-counter";
 import { loadCustomInstructions } from "../utils/custom-instructions";
 import { mcpManager, mcpToolsIntegration } from "../mcp";
+import {
+  condenseConversation,
+  shouldCondenseConversation,
+  getModelTokenLimit,
+  CondenseResponse
+} from "../utils/condense";
+import { LLMClient } from "../llm/client";
+import { LLMConfig } from "../llm/types";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -32,10 +40,12 @@ export class JurikoAgent extends EventEmitter {
   private bash: BashTool;
   private todoTool: TodoTool;
   private confirmationTool: ConfirmationTool;
+  private condenseTool: CondenseTool;
   private chatHistory: ChatEntry[] = [];
   private messages: JurikoMessage[] = [];
   private tokenCounter: TokenCounter;
   private abortController: AbortController | null = null;
+  private llmConfig: LLMConfig;
 
   constructor(apiKey: string, baseURL?: string) {
     super();
@@ -44,7 +54,16 @@ export class JurikoAgent extends EventEmitter {
     this.bash = new BashTool();
     this.todoTool = new TodoTool();
     this.confirmationTool = new ConfirmationTool();
+    this.condenseTool = new CondenseTool();
     this.tokenCounter = createTokenCounter("grok-4-latest");
+    
+    // Initialize LLM config for condensing
+    this.llmConfig = {
+      provider: 'grok',
+      model: 'grok-4-latest',
+      apiKey,
+      baseURL: baseURL || process.env.JURIKO_BASE_URL || "https://api.x.ai/v1"
+    };
 
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
@@ -69,6 +88,10 @@ You have access to these tools:
 - bash: Execute bash commands (use for searching, file discovery, navigation, and system operations)
 - create_todo_list: Create a visual todo list for planning and tracking tasks
 - update_todo_list: Update existing todos in your todo list
+- condense_conversation: Condense the conversation to reduce token usage while preserving important context
+
+TOKEN MANAGEMENT:
+The system automatically monitors token usage and will condense conversations when approaching 75% of the model's token limit. This helps maintain context while staying within limits. You can also manually trigger condensing using the condense_conversation tool.
 
 REAL-TIME INFORMATION:
 You have access to real-time web search and X (Twitter) data. When users ask for current information, latest news, or recent events, you automatically have access to up-to-date information from the web and social media.
@@ -316,6 +339,36 @@ Current working directory: ${process.cwd()}`,
     const inputTokens = this.tokenCounter.countMessageTokens(
       this.messages as any
     );
+    
+    // Check if we need to condense before processing
+    const modelTokenLimit = getModelTokenLimit(this.jurikoClient.getCurrentModel());
+    if (shouldCondenseConversation(inputTokens, modelTokenLimit)) {
+      yield {
+        type: "content",
+        content: "\n🔄 Token usage is approaching the limit (75%). Condensing conversation to preserve context...\n",
+      };
+      
+      try {
+        const condenseResult = await this.performCondense(true);
+        if (condenseResult.error) {
+          yield {
+            type: "content",
+            content: `\n⚠️ Condense failed: ${condenseResult.error}\n`,
+          };
+        } else {
+          yield {
+            type: "content",
+            content: `\n✅ Conversation condensed successfully. Token count reduced from ${inputTokens} to ${condenseResult.newContextTokens}.\n`,
+          };
+        }
+      } catch (error: any) {
+        yield {
+          type: "content",
+          content: `\n⚠️ Condense error: ${error.message}\n`,
+        };
+      }
+    }
+    
     yield {
       type: "token_count",
       tokenCount: inputTokens,
@@ -547,6 +600,9 @@ Current working directory: ${process.cwd()}`,
         case "update_todo_list":
           return await this.todoTool.updateTodoList(args.updates);
 
+        case "condense_conversation":
+          return await this.condenseTool.condenseConversation(args.context);
+
         default:
           // Check if it's an MCP tool
           if (mcpToolsIntegration.isMCPTool(toolCall.function.name)) {
@@ -564,6 +620,46 @@ Current working directory: ${process.cwd()}`,
         error: `Tool execution error: ${error.message}`,
       };
     }
+  }
+
+  private async performCondense(isAutomaticTrigger: boolean = false): Promise<CondenseResponse> {
+    const currentTokens = this.tokenCounter.countMessageTokens(this.messages as any);
+    
+    const condenseResult = await condenseConversation(
+      this.messages,
+      this.llmConfig,
+      this.tokenCounter,
+      currentTokens,
+      {
+        maxMessagesToKeep: 3,
+        isAutomaticTrigger,
+        systemPrompt: (() => {
+          const systemMsg = this.messages.find(m => m.role === 'system');
+          if (systemMsg?.content) {
+            return typeof systemMsg.content === 'string' ? systemMsg.content : JSON.stringify(systemMsg.content);
+          }
+          return "You are JURIKO CLI, an AI assistant that helps with file editing, coding tasks, and system operations.";
+        })()
+      }
+    );
+
+    if (!condenseResult.error) {
+      // Update the messages with condensed version
+      this.messages = condenseResult.messages;
+      
+      // Update chat history to reflect the condensing
+      const condensedEntry: ChatEntry = {
+        type: "assistant",
+        content: `📝 **Conversation Summary**\n\n${condenseResult.summary}`,
+        timestamp: new Date(),
+      };
+      
+      // Replace older entries with the summary, keep recent ones
+      const recentEntries = this.chatHistory.slice(-6); // Keep last 6 entries
+      this.chatHistory = [condensedEntry, ...recentEntries];
+    }
+
+    return condenseResult;
   }
 
   getChatHistory(): ChatEntry[] {
@@ -587,6 +683,8 @@ Current working directory: ${process.cwd()}`,
     // Update token counter for new model
     this.tokenCounter.dispose();
     this.tokenCounter = createTokenCounter(model);
+    // Update LLM config for condensing
+    this.llmConfig.model = model;
   }
 
   abortCurrentOperation(): void {

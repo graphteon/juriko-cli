@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Conversation Condense Feature**: Intelligent token management system
+  - Automatic conversation condensing when token usage reaches 75% of model limit
+  - Smart summarization preserving important context, technical details, and recent messages
+  - Manual condensing tool (`condense_conversation`) with user confirmation
+  - Model-specific token limit detection for all supported providers
+  - Structured summaries including previous conversation, current work, technical concepts, and pending tasks
+  - Seamless integration with existing conversation flow
+  - Clear user feedback during automatic and manual condensing operations
+  - Comprehensive documentation in `docs/CONDENSE_FEATURE.md`
+
+### Enhanced
+- **Token Management**: Extended token counter with model-specific limits and threshold monitoring
+- **Agent System**: Enhanced JurikoAgent with automatic token monitoring and condensing capabilities
+- **Tool System**: Added condense tool with confirmation workflow integration
+- **User Experience**: Clear visual feedback when condensing occurs with token count reduction display
+
+### Technical Improvements
+- New condense utility module (`src/utils/condense.ts`) with conversation summarization logic
+- Enhanced LLM client integration for condensing operations
+- Automatic model detection and token limit configuration
+- Graceful error handling and fallback mechanisms
+- State management for condensed conversations in chat history
+
 ## [0.1.0] - 2025-01-25
 
 ### Added
