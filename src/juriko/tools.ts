@@ -171,4 +171,21 @@ export const JURIKO_TOOLS: JurikoTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "condense_conversation",
+      description: "Condense the conversation to reduce token usage while preserving important context. This summarizes older messages and keeps recent ones.",
+      parameters: {
+        type: "object",
+        properties: {
+          context: {
+            type: "string",
+            description: "Optional context about why condensing is needed (e.g., 'Token limit approaching')",
+          },
+        },
+        required: [],
+      },
+    },
+  },
 ];
