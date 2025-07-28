@@ -11,7 +11,13 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "swarm:example": "tsx examples/agent-swarm-example.ts",
+    "swarm:build": "tsc && node dist/examples/agent-swarm-example.js",
+    "swarm:test": "tsx examples/test-swarm-architecture.ts",
+    "swarm:demo": "tsx examples/demo-swarm.ts",
+    "swarm:basic": "tsx examples/basic-demo.ts",
+    "swarm:integration": "tsx examples/swarm-integration-demo.ts"
   },
   "keywords": [
     "cli",
