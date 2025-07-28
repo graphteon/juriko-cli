@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { MultiLLMAgent, ChatEntry, StreamingChunk } from '../../agent/multi-llm-agent';
+import { JurikoWithSwarm } from '../../juriko-with-swarm';
 import { LLMToolCall } from '../../llm/types';
 import { ToolResult } from '../../types';
 import ToolCallBox from './tool-call-box';
@@ -9,7 +10,7 @@ import ConfirmationDialog from './confirmation-dialog';
 import { logger } from '../../utils/logger';
 
 interface StreamingChatProps {
-  agent: MultiLLMAgent;
+  agent: JurikoWithSwarm;
   onProviderSwitch: () => void;
   onTokenCountChange?: (count: number) => void;
 }
@@ -30,6 +31,8 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
   const [currentStreamingContent, setCurrentStreamingContent] = useState('');
   const [tokenCount, setTokenCount] = useState(0);
   const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
+  const [swarmStatus, setSwarmStatus] = useState<any>(null);
+  const [showSwarmStatus, setShowSwarmStatus] = useState(false);
   const { exit } = useApp();
   const isMountedRef = useRef(true);
   const contentBufferRef = useRef('');
@@ -67,6 +70,23 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
       onTokenCountChange(tokenCount);
     }
   }, [tokenCount, onTokenCountChange]);
+
+  // Monitor swarm status periodically
+  useEffect(() => {
+    const updateSwarmStatus = async () => {
+      try {
+        const status = await agent.getSwarmStatus();
+        setSwarmStatus(status);
+      } catch (error) {
+        // Swarm might not be initialized yet, ignore error
+      }
+    };
+
+    updateSwarmStatus();
+    const interval = setInterval(updateSwarmStatus, 2000); // Update every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [agent]);
 
   const handleConfirmation = (dontAskAgain?: boolean) => {
     confirmationService.confirmOperation(true, dontAskAgain);
@@ -127,6 +147,39 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
       if (input.trim() === 'provider' || input.trim() === 'switch') {
         onProviderSwitch();
         if (isMountedRef.current) {
+          setInput('');
+        }
+        return;
+      }
+
+      // Handle swarm-specific commands
+      if (input.trim() === 'swarm status') {
+        setShowSwarmStatus(!showSwarmStatus);
+        if (isMountedRef.current) {
+          setInput('');
+        }
+        return;
+      }
+
+      if (input.trim() === 'swarm help') {
+        const helpMessage: ChatMessage = {
+          type: 'assistant',
+          content: `🤖 JURIKO Agent Swarm Commands:
+
+• swarm <task> - Execute task using agent orchestration
+• swarm status - Toggle swarm status display
+• swarm help - Show this help message
+
+Examples:
+• swarm create a todo app with React and TypeScript
+• swarm research and implement a REST API
+• swarm build a complete web application with authentication
+
+The swarm automatically detects complex tasks and routes them to specialized agents.`,
+          timestamp: new Date()
+        };
+        if (isMountedRef.current) {
+          setMessages(prev => [...prev, helpMessage]);
           setInput('');
         }
         return;
@@ -379,6 +432,7 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
         
         <Box flexDirection="column" marginBottom={1}>
           <Text dimColor>Available commands: view, str_replace, create, insert, undo_edit, bash, help</Text>
+          <Text dimColor>Swarm commands: swarm &lt;task&gt;, swarm status, swarm help</Text>
           <Text dimColor>Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit</Text>
           <Text dimColor>Press 's' to stop operation, ESC to cancel, Ctrl+P to switch provider/model</Text>
         </Box>
@@ -387,6 +441,31 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
         <Box flexDirection="column" marginBottom={1} width="100%">
           {messages.map(renderMessage)}
         </Box>
+
+        {/* Swarm Status Display */}
+        {showSwarmStatus && swarmStatus && (
+          <Box flexDirection="column" marginBottom={1} borderStyle="round" borderColor="cyan" paddingX={1}>
+            <Text color="cyan" bold>🤖 Agent Swarm Status</Text>
+            <Text>Running: {swarmStatus.isRunning ? '✅' : '❌'}</Text>
+            <Text>Active Tasks: {swarmStatus.activeTasks}</Text>
+            <Text>Pending Tasks: {swarmStatus.pendingTasks}</Text>
+            <Text>Completed Tasks: {swarmStatus.completedTasks}</Text>
+            <Text>Registered Agents: {swarmStatus.registeredAgents}</Text>
+            
+            {swarmStatus.agents && swarmStatus.agents.length > 0 && (
+              <Box flexDirection="column" marginTop={1}>
+                <Text color="blue">Agents:</Text>
+                {swarmStatus.agents.map((agent: any, index: number) => (
+                  <Text key={index}>
+                    • {agent.name}: {agent.status}
+                    ({agent.currentTasks} active, {agent.completedTasks} completed,
+                    {Math.round(agent.successRate * 100)}% success)
+                  </Text>
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
 
         {/* Input */}
         <Box borderStyle="round" borderColor="gray" paddingX={1} marginTop={1}>

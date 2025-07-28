@@ -9,6 +9,7 @@ A conversational AI CLI tool with intelligent text editor capabilities and tool 
 - **🤖 Multi-LLM Provider Support**: Choose from Anthropic Claude, OpenAI GPT, Grok, or Local LLM models
 - **🎯 Interactive Provider Selection**: Easy-to-use interface for selecting providers and models at startup
 - **🔌 MCP Integration**: Connect to Model Context Protocol servers for extended tool capabilities
+- **🚀 Agent Swarm Orchestration**: Multi-agent system for complex tasks with specialized agents
 - **📝 Smart File Operations**: AI automatically uses tools to view, create, and edit files
 - **⚡ Bash Integration**: Execute shell commands through natural conversation
 - **🔧 Automatic Tool Selection**: AI intelligently chooses the right tools for your requests
@@ -226,6 +227,7 @@ JURIKO will automatically load and follow these instructions when working in you
 
 Instead of typing commands, just tell JURIKO what you want to do:
 
+### Basic Operations
 ```
 💬 "Show me the contents of package.json"
 💬 "Create a new file called hello.js with a simple console.log"
@@ -233,6 +235,22 @@ Instead of typing commands, just tell JURIKO what you want to do:
 💬 "Replace 'oldFunction' with 'newFunction' in all JS files"
 💬 "Run the tests and show me the results"
 💬 "What's the current directory structure?"
+```
+
+### Agent Swarm Operations
+```
+💬 "swarm create a complete todo application with React and TypeScript"
+💬 "swarm research modern authentication patterns and implement JWT auth"
+💬 "swarm build a REST API with Express, add comprehensive tests, and create documentation"
+💬 "Create a full-stack web application with user management and database integration"
+💬 "Research and implement a microservices architecture with Docker containers"
+💬 "Build a complete e-commerce platform with payment integration and admin dashboard"
+```
+
+### Swarm Management
+```
+💬 "swarm status"    # Toggle swarm status display
+💬 "swarm help"      # Show swarm commands and examples
 ```
 
 ### Using with Local LLMs
@@ -257,6 +275,77 @@ Local LLMs are particularly useful for:
 - **Offline development** when internet connectivity is limited
 - **Cost optimization** for high-volume usage
 - **Custom fine-tuned models** specific to your domain or coding style
+
+## Agent Swarm Orchestration
+
+JURIKO includes a powerful multi-agent orchestration system that automatically handles complex tasks by coordinating specialized agents. This system is inspired by OpenAI Swarm and provides intelligent task routing and load balancing.
+
+### How It Works
+
+The Agent Swarm system consists of:
+
+- **🎯 Coordinator Agent**: Breaks down complex tasks and orchestrates other agents
+- **💻 Coding Agent**: Specializes in programming, debugging, and code analysis
+- **🔍 Research Agent**: Handles information gathering, analysis, and documentation
+- **⚖️ Load Balancer**: Distributes tasks optimally across available agents
+- **📊 Real-time Monitoring**: Tracks agent performance and task completion
+
+### Using Agent Swarm
+
+The swarm system works automatically - JURIKO detects when tasks are complex enough to benefit from multi-agent coordination. You can also explicitly use swarm commands:
+
+```bash
+# Automatic swarm activation for complex tasks
+💬 "Create a complete web application with authentication, database, and API"
+💬 "Research best practices and implement a microservices architecture"
+💬 "Build and test a full-stack React application with TypeScript"
+
+# Explicit swarm commands
+💬 "swarm create a todo app with React and TypeScript"
+💬 "swarm research and implement a REST API with authentication"
+💬 "swarm build a complete web application with testing"
+```
+
+### Swarm Commands
+
+- **`swarm <task>`**: Execute a task using agent orchestration
+- **`swarm status`**: Toggle real-time swarm status display
+- **`swarm help`**: Show swarm-specific help and examples
+
+### Swarm Status Display
+
+Monitor your agents in real-time with the swarm status display:
+
+```
+🤖 Agent Swarm Status
+Running: ✅
+Active Tasks: 2
+Pending Tasks: 1
+Completed Tasks: 15
+Registered Agents: 3
+
+Agents:
+• Coordinator Agent: busy (1 active, 8 completed, 100% success)
+• Coding Agent: busy (1 active, 5 completed, 100% success)
+• Research Agent: idle (0 active, 2 completed, 100% success)
+```
+
+### When Swarm Activates
+
+The system automatically uses swarm orchestration for tasks that involve:
+
+- **Multiple capabilities**: Tasks requiring both coding and research
+- **Complex projects**: Building complete applications or systems
+- **End-to-end workflows**: From research to implementation to testing
+- **Large-scale operations**: Tasks affecting multiple files or components
+
+### Benefits
+
+- **🚀 Faster execution**: Parallel processing of complex tasks
+- **🎯 Better results**: Specialized agents for specific task types
+- **📈 Scalability**: Handles multiple concurrent tasks efficiently
+- **🔄 Fault tolerance**: Automatic retry and failover mechanisms
+- **📊 Transparency**: Real-time monitoring and status updates
 
 ## MCP Integration
 
@@ -382,11 +471,16 @@ npm run typecheck
 
 - **Multi-LLM Client**: Unified interface supporting Anthropic, OpenAI, Grok, and Local LLM APIs
 - **Provider Selection**: Interactive UI for choosing providers and models with local LLM wizard
+- **Agent Swarm System**: Multi-agent orchestration with specialized agents and intelligent task routing
+  - **JurikoWithSwarm**: Main integration layer combining regular JURIKO with swarm capabilities
+  - **AgentSwarm**: Core orchestration engine with load balancing and task management
+  - **Specialized Agents**: Coordinator, Coding, and Research agents with distinct capabilities
+  - **Task Management**: Priority-based queue system with retry mechanisms and timeout handling
 - **Agent**: Core command processing and execution logic with multi-provider support
 - **Tools**: Text editor and bash tool implementations
-- **UI**: Ink-based terminal interface components with provider management and local LLM configuration
+- **UI**: Ink-based terminal interface components with provider management, local LLM configuration, and swarm status display
 - **Settings**: Persistent user preferences, API key management, and local server configuration
-- **Types**: TypeScript definitions for the entire system including local LLM support
+- **Types**: TypeScript definitions for the entire system including local LLM and swarm support
 
 ## License
 

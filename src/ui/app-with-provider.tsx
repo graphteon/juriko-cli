@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { MultiLLMAgent } from '../agent/multi-llm-agent';
+import { JurikoWithSwarm } from '../juriko-with-swarm';
 import { ToolResult } from '../types';
 import { ConfirmationService, ConfirmationOptions } from '../utils/confirmation-service';
 import ConfirmationDialog from './components/confirmation-dialog';
@@ -25,7 +26,7 @@ import cfonts from 'cfonts';
 import { logger } from '../utils/logger';
 
 interface Props {
-  agent?: MultiLLMAgent;
+  agent?: JurikoWithSwarm;
 }
 
 type AppState = 'loading' | 'mcp-loading' | 'provider-selection' | 'api-key-input' | 'local-llm-wizard' | 'ready';
@@ -34,7 +35,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
   const [appState, setAppState] = useState<AppState>('loading');
   const [selectedProvider, setSelectedProvider] = useState<LLMProvider | undefined>();
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
-  const [agent, setAgent] = useState<MultiLLMAgent | undefined>(initialAgent);
+  const [agent, setAgent] = useState<JurikoWithSwarm | undefined>(initialAgent);
   const [llmClient, setLlmClient] = useState<LLMClient | undefined>();
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
@@ -145,7 +146,7 @@ export default function AppWithProvider({ agent: initialAgent }: Props) {
       
       // Create new agent with the LLM client if we don't have one
       if (!agent) {
-        const newAgent = new MultiLLMAgent(client);
+        const newAgent = new JurikoWithSwarm(client);
         setAgent(newAgent);
       } else {
         // Update existing agent's client
