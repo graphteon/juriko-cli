@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Text } from "ink";
-import { JurikoAgent, ChatEntry } from "../../agent/juriko-agent";
+import { MultiLLMAgent, ChatEntry } from "../../agent/multi-llm-agent";
 import { useInputHandler } from "../../hooks/use-input-handler";
 import { LoadingSpinner } from "./loading-spinner";
 import { EnhancedLoadingSpinner } from "./enhanced-loading-spinner";
@@ -15,11 +15,11 @@ import cfonts from "cfonts";
 import { logger } from "../../utils/logger";
 
 interface ChatInterfaceProps {
-  agent?: JurikoAgent;
+  agent?: MultiLLMAgent;
 }
 
 // Main chat component that handles input when agent is available
-function ChatInterfaceWithAgent({ agent }: { agent: JurikoAgent }) {
+function ChatInterfaceWithAgent({ agent }: { agent: MultiLLMAgent }) {
   const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingTime, setProcessingTime] = useState(0);
@@ -190,9 +190,9 @@ function ChatInterfaceWithAgent({ agent }: { agent: JurikoAgent }) {
 
 // Main component that handles API key input or chat interface
 export default function ChatInterface({ agent }: ChatInterfaceProps) {
-  const [currentAgent, setCurrentAgent] = useState<JurikoAgent | null>(agent || null);
+  const [currentAgent, setCurrentAgent] = useState<MultiLLMAgent | null>(agent || null);
 
-  const handleApiKeySet = (newAgent: JurikoAgent) => {
+  const handleApiKeySet = (newAgent: MultiLLMAgent) => {
     setCurrentAgent(newAgent);
   };
 

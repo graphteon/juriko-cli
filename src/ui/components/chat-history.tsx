@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { ChatEntry } from "../../agent/juriko-agent";
+import { ChatEntry } from "../../agent/multi-llm-agent";
 import { DiffRenderer } from "./diff-renderer";
 import { MarkdownRenderer } from "../utils/markdown-renderer";
 

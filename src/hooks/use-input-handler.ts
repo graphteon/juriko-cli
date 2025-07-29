@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { useInput, useApp } from "ink";
-import { JurikoAgent, ChatEntry } from "../agent/juriko-agent";
+import { MultiLLMAgent, ChatEntry } from "../agent/multi-llm-agent";
 import { ConfirmationService } from "../utils/confirmation-service";
 
 interface UseInputHandlerProps {
-  agent: JurikoAgent;
+  agent: MultiLLMAgent;
   chatHistory: ChatEntry[];
   setChatHistory: React.Dispatch<React.SetStateAction<ChatEntry[]>>;
   setIsProcessing: (processing: boolean) => void;

@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import { JurikoAgent } from "../../agent/juriko-agent";
+import { MultiLLMAgent } from "../../agent/multi-llm-agent";
+import { LLMClient } from "../../llm/client";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { logger } from "../../utils/logger";
 
 interface ApiKeyInputProps {
-  onApiKeySet: (agent: JurikoAgent) => void;
+  onApiKeySet: (agent: MultiLLMAgent) => void;
 }
 
 interface UserSettings {
@@ -56,7 +57,14 @@ export default function ApiKeyInput({ onApiKeySet }: ApiKeyInputProps) {
     setIsSubmitting(true);
     try {
       const apiKey = input.trim();
-      const agent = new JurikoAgent(apiKey);
+      // Create LLM client with default configuration (can be changed later)
+      const llmClient = new LLMClient({
+        provider: 'grok', // Default to grok as it was used in JurikoAgent
+        model: 'grok-4-latest',
+        apiKey: apiKey,
+        baseURL: process.env.JURIKO_BASE_URL || "https://api.x.ai/v1"
+      });
+      const agent = new MultiLLMAgent(llmClient);
 
       // Set environment variable for current process
       process.env.JURIKO_API_KEY = apiKey;
