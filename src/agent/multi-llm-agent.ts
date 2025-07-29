@@ -1,5 +1,5 @@
 import { LLMClient } from "../llm/client";
-import { LLMMessage, LLMToolCall, LLMConfig } from "../llm/types";
+import { LLMMessage, LLMToolCall, LLMConfig, LLMProvider } from "../llm/types";
 import { TextEditorTool, BashTool, TodoTool, ConfirmationTool, CondenseTool } from "../tools";
 import { ToolResult } from "../types";
 import { EventEmitter } from "events";
@@ -213,13 +213,8 @@ export class MultiLLMAgent extends EventEmitter {
     this.condenseTool = new CondenseTool();
     this.tokenCounter = createTokenCounter("gpt-4"); // Default tokenizer
     
-    // Initialize LLM config for condensing - use provided config or create default
-    this.llmConfig = llmConfig || {
-      provider: 'openai',
-      model: this.llmClient.getCurrentModel(),
-      apiKey: process.env.OPENAI_API_KEY || '',
-      baseURL: undefined
-    };
+    // Initialize LLM config for condensing - use provided config or derive from current client
+    this.llmConfig = llmConfig || this.deriveLLMConfigFromClient();
 
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
@@ -296,6 +291,48 @@ IMPORTANT RESPONSE GUIDELINES:
 
 Current working directory: ${process.cwd()}`,
     });
+  }
+
+  private deriveLLMConfigFromClient(): LLMConfig {
+    // Extract the current configuration from the LLM client
+    const currentModel = this.llmClient.getCurrentModel();
+    
+    // Determine provider based on model name
+    let provider: LLMProvider = 'openai'; // default fallback
+    let apiKey = '';
+    let baseURL: string | undefined;
+    
+    // Check for Anthropic models
+    if (currentModel.includes('claude')) {
+      provider = 'anthropic';
+      apiKey = process.env.ANTHROPIC_API_KEY || '';
+      baseURL = process.env.ANTHROPIC_BASE_URL;
+    }
+    // Check for Grok models
+    else if (currentModel.includes('grok')) {
+      provider = 'grok';
+      apiKey = process.env.GROK_API_KEY || '';
+      baseURL = process.env.GROK_BASE_URL || 'https://api.x.ai/v1';
+    }
+    // Check for local models
+    else if (currentModel === 'custom-model' || process.env.LOCAL_LLM_BASE_URL) {
+      provider = 'local';
+      apiKey = process.env.LOCAL_LLM_API_KEY || 'local-key';
+      baseURL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:1234/v1';
+    }
+    // Default to OpenAI
+    else {
+      provider = 'openai';
+      apiKey = process.env.OPENAI_API_KEY || '';
+      baseURL = process.env.OPENAI_BASE_URL;
+    }
+    
+    return {
+      provider,
+      model: currentModel,
+      apiKey,
+      baseURL
+    };
   }
 
   private async initializeMCP(): Promise<void> {
@@ -926,8 +963,8 @@ Current working directory: ${process.cwd()}`,
     // Update token counter for new model
     this.tokenCounter.dispose();
     this.tokenCounter = createTokenCounter(model);
-    // Update LLM config for condensing
-    this.llmConfig.model = model;
+    // Update LLM config for condensing to match new model
+    this.llmConfig = this.deriveLLMConfigFromClient();
   }
 
   getLLMClient(): LLMClient {
@@ -936,6 +973,8 @@ Current working directory: ${process.cwd()}`,
 
   setLLMClient(client: LLMClient): void {
     this.llmClient = client;
+    // Update LLM config for condensing to match new client
+    this.llmConfig = this.deriveLLMConfigFromClient();
   }
 
   abortCurrentOperation(): void {
