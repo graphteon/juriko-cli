@@ -1,11 +1,17 @@
 import { LLMClient } from "../llm/client";
-import { LLMMessage, LLMToolCall } from "../llm/types";
-import { TextEditorTool, BashTool, TodoTool, ConfirmationTool } from "../tools";
+import { LLMMessage, LLMToolCall, LLMConfig } from "../llm/types";
+import { TextEditorTool, BashTool, TodoTool, ConfirmationTool, CondenseTool } from "../tools";
 import { ToolResult } from "../types";
 import { EventEmitter } from "events";
 import { createTokenCounter, TokenCounter } from "../utils/token-counter";
 import { loadCustomInstructions } from "../utils/custom-instructions";
 import { mcpManager, mcpToolsIntegration } from "../mcp";
+import {
+  condenseConversation,
+  shouldCondenseConversation,
+  getModelTokenLimit,
+  CondenseResponse
+} from "../utils/condense";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -164,6 +170,23 @@ const MULTI_LLM_TOOLS = [
         required: ["updates"]
       }
     }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "condense_conversation",
+      description: "Condense the conversation to reduce token usage while preserving important context",
+      parameters: {
+        type: "object" as const,
+        properties: {
+          context: {
+            type: "string",
+            description: "Optional context for the condensing operation"
+          }
+        },
+        required: []
+      }
+    }
   }
 ];
 
@@ -173,19 +196,30 @@ export class MultiLLMAgent extends EventEmitter {
   private bash: BashTool;
   private todoTool: TodoTool;
   private confirmationTool: ConfirmationTool;
+  private condenseTool: CondenseTool;
   private chatHistory: ChatEntry[] = [];
   private messages: LLMMessage[] = [];
   private tokenCounter: TokenCounter;
   private abortController: AbortController | null = null;
+  private llmConfig: LLMConfig;
 
-  constructor(llmClient: LLMClient) {
+  constructor(llmClient: LLMClient, llmConfig?: LLMConfig) {
     super();
     this.llmClient = llmClient;
     this.textEditor = new TextEditorTool();
     this.bash = new BashTool();
     this.todoTool = new TodoTool();
     this.confirmationTool = new ConfirmationTool();
+    this.condenseTool = new CondenseTool();
     this.tokenCounter = createTokenCounter("gpt-4"); // Default tokenizer
+    
+    // Initialize LLM config for condensing - use provided config or create default
+    this.llmConfig = llmConfig || {
+      provider: 'openai',
+      model: this.llmClient.getCurrentModel(),
+      apiKey: process.env.OPENAI_API_KEY || '',
+      baseURL: undefined
+    };
 
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
@@ -210,6 +244,10 @@ You have access to these tools:
 - bash: Execute bash commands (use for searching, file discovery, navigation, and system operations)
 - create_todo_list: Create a visual todo list for planning and tracking tasks
 - update_todo_list: Update existing todos in your todo list
+- condense_conversation: Condense the conversation to reduce token usage while preserving important context
+
+TOKEN MANAGEMENT:
+The system automatically monitors token usage and will condense conversations when approaching 75% of the model's token limit. This helps maintain context while staying within limits. You can also manually trigger condensing using the condense_conversation tool.
 
 REAL-TIME INFORMATION:
 You have access to real-time web search and X (Twitter) data. When users ask for current information, latest news, or recent events, you automatically have access to up-to-date information from the web and social media.
@@ -405,86 +443,90 @@ Current working directory: ${process.cwd()}`,
   }
 
   private messageReducer(previous: any, item: any): any {
-    const reduce = (acc: any, delta: any) => {
-      acc = { ...acc };
-      for (const [key, value] of Object.entries(delta)) {
-        if (acc[key] === undefined || acc[key] === null) {
-          acc[key] = value;
-          // Clean up index properties from tool calls
-          if (Array.isArray(acc[key])) {
-            for (const arr of acc[key]) {
-              delete arr.index;
-            }
+    const delta = item.choices[0]?.delta || {};
+    
+    // Deep clone previous to avoid mutations
+    const result = JSON.parse(JSON.stringify(previous || {}));
+    
+    // Handle content accumulation
+    if (delta.content) {
+      result.content = (result.content || '') + delta.content;
+    }
+    
+    // Handle role
+    if (delta.role) {
+      result.role = delta.role;
+    }
+    
+    // Handle tool_calls with special logic for streaming
+    if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
+      if (!result.tool_calls) {
+        result.tool_calls = [];
+      }
+      
+      for (let i = 0; i < delta.tool_calls.length; i++) {
+        const deltaToolCall = delta.tool_calls[i];
+        
+        if (!deltaToolCall) continue;
+        
+        // Find existing tool call by ID or index
+        let existingToolCall = null;
+        let targetIndex = i;
+        
+        // Use index from streaming chunk if available
+        if (deltaToolCall.index !== undefined) {
+          targetIndex = deltaToolCall.index;
+        }
+        
+        // If this tool call has an ID, look for existing tool call with same ID
+        if (deltaToolCall.id) {
+          const existingIndex = result.tool_calls.findIndex((tc: any) => tc && tc.id === deltaToolCall.id);
+          if (existingIndex !== -1) {
+            existingToolCall = result.tool_calls[existingIndex];
+            targetIndex = existingIndex;
           }
-        } else if (typeof acc[key] === "string" && typeof value === "string") {
-          (acc[key] as string) += value;
-        } else if (Array.isArray(acc[key]) && Array.isArray(value)) {
-          const accArray = acc[key] as any[];
-          for (let i = 0; i < value.length; i++) {
-            // Special handling for tool calls - merge function properties properly
-            if (key === "tool_calls") {
-              // Handle streaming tool calls with index
-              let targetIndex = i;
-              if (value[i].index !== undefined) {
-                // Use the index from the streaming chunk to find the correct tool call
-                targetIndex = value[i].index;
-              }
-              
-              
-              // Ensure we have an array slot for this index
-              if (!accArray[targetIndex]) accArray[targetIndex] = {};
-              
-              // Initialize function object if it doesn't exist
-              if (!accArray[targetIndex].function) {
-                accArray[targetIndex].function = {};
-              }
-              
-              // Handle the case where we have new function data
-              if (value[i].function) {
-                // Merge function name
-                if (value[i].function.name) {
-                  accArray[targetIndex].function.name = value[i].function.name;
-                }
-                
-                // Handle arguments
-                if (value[i].function.arguments !== undefined) {
-                  if (!accArray[targetIndex].function.arguments) {
-                    // First time getting arguments - set them directly
-                    accArray[targetIndex].function.arguments = value[i].function.arguments;
-                  } else {
-                    // Accumulate arguments if both exist (for streaming JSON)
-                    if (typeof accArray[targetIndex].function.arguments === "string" &&
-                        typeof value[i].function.arguments === "string") {
-                      // For streaming JSON fragments, concatenate them
-                      accArray[targetIndex].function.arguments += value[i].function.arguments;
-                    } else {
-                      // For complete arguments, use the new value
-                      accArray[targetIndex].function.arguments = value[i].function.arguments;
-                    }
-                  }
-                }
-              }
-              
-              // Merge other properties from the tool call (but not index)
-              for (const [tcKey, tcValue] of Object.entries(value[i])) {
-                if (tcKey !== 'function' && tcKey !== 'index' && tcValue !== undefined) {
-                  accArray[targetIndex][tcKey] = tcValue;
-                }
-              }
-            } else {
-              // Regular reduction for non-tool-call arrays
-              if (!accArray[i]) accArray[i] = {};
-              accArray[i] = reduce(accArray[i], value[i]);
-            }
+        }
+        
+        // Ensure we have a tool call object at the target index
+        if (!existingToolCall) {
+          while (result.tool_calls.length <= targetIndex) {
+            result.tool_calls.push({});
           }
-        } else if (typeof acc[key] === "object" && typeof value === "object") {
-          acc[key] = reduce(acc[key], value);
+          existingToolCall = result.tool_calls[targetIndex];
+        }
+        
+        // Merge tool call properties
+        if (deltaToolCall.id) {
+          existingToolCall.id = deltaToolCall.id;
+        }
+        if (deltaToolCall.type) {
+          existingToolCall.type = deltaToolCall.type;
+        }
+        
+        // Handle function object
+        if (deltaToolCall.function) {
+          if (!existingToolCall.function) {
+            existingToolCall.function = {};
+          }
+          
+          if (deltaToolCall.function.name) {
+            existingToolCall.function.name = deltaToolCall.function.name;
+          }
+          
+          if (deltaToolCall.function.arguments !== undefined) {
+            // Accumulate arguments as string
+            existingToolCall.function.arguments = (existingToolCall.function.arguments || '') + deltaToolCall.function.arguments;
+          }
+        }
+        
+        // Clean up index property if it exists
+        if ('index' in existingToolCall) {
+          delete existingToolCall.index;
         }
       }
-      return acc;
-    };
-
-    return reduce(previous, item.choices[0]?.delta || {});
+    }
+    
+    return result;
   }
 
   async *processUserMessageStream(
@@ -506,6 +548,36 @@ Current working directory: ${process.cwd()}`,
     const inputTokens = this.tokenCounter.countMessageTokens(
       this.messages as any
     );
+    
+    // Check if we need to condense before processing
+    const modelTokenLimit = getModelTokenLimit(this.llmClient.getCurrentModel());
+    if (shouldCondenseConversation(inputTokens, modelTokenLimit)) {
+      yield {
+        type: "content",
+        content: "\n🔄 Token usage is approaching the limit (75%). Condensing conversation to preserve context...\n",
+      };
+      
+      try {
+        const condenseResult = await this.performCondense(true);
+        if (condenseResult.error) {
+          yield {
+            type: "content",
+            content: `\n⚠️ Condense failed: ${condenseResult.error}\n`,
+          };
+        } else {
+          yield {
+            type: "content",
+            content: `\n✅ Conversation condensed successfully. Token count reduced from ${inputTokens} to ${condenseResult.newContextTokens}.\n`,
+          };
+        }
+      } catch (error: any) {
+        yield {
+          type: "content",
+          content: `\n⚠️ Condense error: ${error.message}\n`,
+        };
+      }
+    }
+    
     yield {
       type: "token_count",
       tokenCount: inputTokens,
@@ -554,11 +626,20 @@ Current working directory: ${process.cwd()}`,
           // Accumulate the message using reducer
           accumulatedMessage = this.messageReducer(accumulatedMessage, chunk);
 
-          // Check for tool calls - yield when we have complete tool calls with function names AND arguments
+          // Check for tool calls - yield when we have complete tool calls with function names AND complete arguments
           if (!toolCallsYielded && accumulatedMessage.tool_calls?.length > 0) {
-            // Check if we have at least one complete tool call with both function name and arguments
+            // Check if we have at least one complete tool call with function name AND complete arguments
             const hasCompleteTool = accumulatedMessage.tool_calls.some(
-              (tc: any) => tc.function?.name && tc.function?.arguments
+              (tc: any) => tc.function?.name && tc.function?.arguments &&
+              // Check if arguments is valid JSON (complete)
+              (() => {
+                try {
+                  JSON.parse(tc.function.arguments);
+                  return true;
+                } catch {
+                  return false;
+                }
+              })()
             );
             if (hasCompleteTool) {
               yield {
@@ -614,15 +695,21 @@ Current working directory: ${process.cwd()}`,
           // Only yield tool_calls if we haven't already yielded them during streaming
           // AND they have complete arguments
           if (!toolCallsYielded) {
-            // Check if all tool calls have both name and arguments before yielding
-            const allToolCallsComplete = accumulatedMessage.tool_calls.every(
-              (tc: any) => tc.function?.name && tc.function?.arguments
-            );
+            // Filter to only complete tool calls with valid JSON arguments
+            const completeToolCalls = accumulatedMessage.tool_calls.filter((tc: any) => {
+              if (!tc.function?.name || !tc.function?.arguments) return false;
+              try {
+                JSON.parse(tc.function.arguments);
+                return true;
+              } catch {
+                return false;
+              }
+            });
             
-            if (allToolCallsComplete) {
+            if (completeToolCalls.length > 0) {
               yield {
                 type: "tool_calls",
-                toolCalls: accumulatedMessage.tool_calls,
+                toolCalls: completeToolCalls,
               };
             }
           }
@@ -712,6 +799,59 @@ Current working directory: ${process.cwd()}`,
     }
   }
 
+  private async performCondense(isAutomaticTrigger: boolean = false): Promise<CondenseResponse> {
+    const currentTokens = this.tokenCounter.countMessageTokens(this.messages as any);
+    
+    // Convert LLMMessage[] to JurikoMessage[] for condense function
+    const jurikoMessages = this.messages.map(msg => ({
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+      tool_calls: msg.tool_calls,
+      tool_call_id: msg.tool_call_id
+    }));
+    
+    const condenseResult = await condenseConversation(
+      jurikoMessages,
+      this.llmConfig,
+      this.tokenCounter,
+      currentTokens,
+      {
+        maxMessagesToKeep: 3,
+        isAutomaticTrigger,
+        systemPrompt: (() => {
+          const systemMsg = this.messages.find(m => m.role === 'system');
+          if (systemMsg?.content) {
+            return typeof systemMsg.content === 'string' ? systemMsg.content : JSON.stringify(systemMsg.content);
+          }
+          return "You are JURIKO CLI, an AI assistant that helps with file editing, coding tasks, and system operations.";
+        })()
+      }
+    );
+
+    if (!condenseResult.error) {
+      // Convert back to LLMMessage[] and update the messages
+      this.messages = condenseResult.messages.map(msg => ({
+        role: msg.role as 'system' | 'user' | 'assistant' | 'tool',
+        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+        tool_calls: (msg as any).tool_calls,
+        tool_call_id: (msg as any).tool_call_id
+      }));
+      
+      // Update chat history to reflect the condensing
+      const condensedEntry: ChatEntry = {
+        type: "assistant",
+        content: `📝 **Conversation Summary**\n\n${condenseResult.summary}`,
+        timestamp: new Date(),
+      };
+      
+      // Replace older entries with the summary, keep recent ones
+      const recentEntries = this.chatHistory.slice(-6); // Keep last 6 entries
+      this.chatHistory = [condensedEntry, ...recentEntries];
+    }
+
+    return condenseResult;
+  }
+
   private async executeTool(toolCall: LLMToolCall): Promise<ToolResult> {
     try {
       const args = JSON.parse(toolCall.function.arguments);
@@ -742,6 +882,9 @@ Current working directory: ${process.cwd()}`,
 
         case "update_todo_list":
           return await this.todoTool.updateTodoList(args.updates);
+
+        case "condense_conversation":
+          return await this.condenseTool.condenseConversation(args.context);
 
         default:
           // Check if it's an MCP tool
@@ -780,6 +923,11 @@ Current working directory: ${process.cwd()}`,
 
   setModel(model: string): void {
     this.llmClient.setModel(model);
+    // Update token counter for new model
+    this.tokenCounter.dispose();
+    this.tokenCounter = createTokenCounter(model);
+    // Update LLM config for condensing
+    this.llmConfig.model = model;
   }
 
   getLLMClient(): LLMClient {

@@ -68,6 +68,26 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
     }
   }, [tokenCount, onTokenCountChange]);
 
+  // Load existing chat history from agent when component mounts
+  useEffect(() => {
+    const loadChatHistory = () => {
+      const agentHistory = agent.getChatHistory();
+      if (agentHistory.length > 0) {
+        // Convert agent's ChatEntry[] to our ChatMessage[] format
+        const convertedMessages: ChatMessage[] = agentHistory.map(entry => ({
+          type: entry.type === 'tool_call' || entry.type === 'tool_result' ? 'tool_calls' : entry.type,
+          content: entry.content,
+          toolCalls: entry.toolCalls,
+          timestamp: entry.timestamp,
+          isStreaming: entry.isStreaming
+        }));
+        setMessages(convertedMessages);
+      }
+    };
+
+    loadChatHistory();
+  }, [agent]);
+
   const handleConfirmation = (dontAskAgain?: boolean) => {
     confirmationService.confirmOperation(true, dontAskAgain);
     setConfirmationOptions(null);
@@ -127,6 +147,50 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
       if (input.trim() === 'provider' || input.trim() === 'switch') {
         onProviderSwitch();
         if (isMountedRef.current) {
+          setInput('');
+        }
+        return;
+      }
+
+      // Handle /clear command to clear chat history
+      if (input.trim() === '/clear' || input.trim() === 'clear') {
+        setMessages([]);
+        // Also clear agent's internal chat history
+        const agentHistory = agent.getChatHistory();
+        agentHistory.length = 0;
+        if (isMountedRef.current) {
+          setInput('');
+          // Add confirmation message
+          const clearMessage: ChatMessage = {
+            type: 'assistant',
+            content: '🗑️ Chat history cleared',
+            timestamp: new Date()
+          };
+          setMessages([clearMessage]);
+        }
+        return;
+      }
+
+      // Handle /history command to show chat history info
+      if (input.trim() === '/history' || input.trim() === 'history') {
+        const agentHistory = agent.getChatHistory();
+        const historyInfo: ChatMessage = {
+          type: 'assistant',
+          content: `📜 Chat History Info:
+          
+Total messages: ${agentHistory.length}
+Current session messages: ${messages.length}
+
+Commands:
+- /clear or clear - Clear chat history
+- /history or history - Show this info
+- Type normally to continue chatting
+
+The chat history is automatically saved and will persist between sessions.`,
+          timestamp: new Date()
+        };
+        if (isMountedRef.current) {
+          setMessages(prev => [...prev, historyInfo]);
           setInput('');
         }
         return;
@@ -379,8 +443,8 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
         
         <Box flexDirection="column" marginBottom={1}>
           <Text dimColor>Available commands: view, str_replace, create, insert, undo_edit, bash, help</Text>
-          <Text dimColor>Type 'provider' to switch provider/model, 'help' for usage, 'exit' or Ctrl+C to quit</Text>
-          <Text dimColor>Press 's' to stop operation, ESC to cancel, Ctrl+P to switch provider/model</Text>
+          <Text dimColor>Type 'provider' to switch provider/model, '/history' for chat history, '/clear' to clear history</Text>
+          <Text dimColor>Press 's' to stop operation, ESC to cancel, Ctrl+P to switch provider/model, 'exit' or Ctrl+C to quit</Text>
         </Box>
 
         {/* Messages */}
