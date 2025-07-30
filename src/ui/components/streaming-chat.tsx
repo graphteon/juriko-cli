@@ -281,14 +281,8 @@ The chat history is automatically saved and will persist between sessions.`,
 
           case "token_count":
             if (chunk.tokenCount !== undefined) {
-              // Throttle token count updates to reduce blinking
-              setTokenCount(prev => {
-                // Only update if difference is significant (>10 tokens) or it's been a while
-                if (Math.abs(chunk.tokenCount! - prev) > 10) {
-                  return chunk.tokenCount!;
-                }
-                return prev;
-              });
+              // Update token count accurately without throttling
+              setTokenCount(chunk.tokenCount);
             }
             break;
 

@@ -2,6 +2,7 @@ import { JurikoMessage } from "../juriko/client";
 import { LLMClient } from "../llm/client";
 import { LLMConfig, LLMMessage } from "../llm/types";
 import { TokenCounter } from "./token-counter";
+import { getCondenseThresholdWithEnv } from "./user-settings";
 
 export interface CondenseResponse {
   messages: JurikoMessage[];
@@ -184,8 +185,32 @@ export async function condenseConversation(
 
 /**
  * Check if conversation needs condensing based on token count
+ * Uses user-configurable threshold from settings (default 75%)
  */
-export function shouldCondenseConversation(
+export async function shouldCondenseConversation(
+  currentTokens: number,
+  maxTokens: number,
+  customThreshold?: number
+): Promise<boolean> {
+  let threshold: number;
+  
+  if (customThreshold !== undefined) {
+    // Use provided custom threshold (convert percentage to decimal)
+    threshold = customThreshold / 100;
+  } else {
+    // Get threshold from user settings or environment
+    const thresholdPercent = await getCondenseThresholdWithEnv();
+    threshold = thresholdPercent / 100;
+  }
+  
+  return currentTokens >= (maxTokens * threshold);
+}
+
+/**
+ * Synchronous version for backward compatibility
+ * Uses default 75% threshold
+ */
+export function shouldCondenseConversationSync(
   currentTokens: number,
   maxTokens: number,
   threshold: number = 0.75

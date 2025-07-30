@@ -211,10 +211,12 @@ export class MultiLLMAgent extends EventEmitter {
     this.todoTool = new TodoTool();
     this.confirmationTool = new ConfirmationTool();
     this.condenseTool = new CondenseTool();
-    this.tokenCounter = createTokenCounter("gpt-4"); // Default tokenizer
     
     // Initialize LLM config for condensing - use provided config or derive from current client
     this.llmConfig = llmConfig || this.deriveLLMConfigFromClient();
+    
+    // Initialize token counter with the current model for accurate counting
+    this.tokenCounter = createTokenCounter(this.llmClient.getCurrentModel());
 
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
@@ -581,14 +583,14 @@ Current working directory: ${process.cwd()}`,
     this.chatHistory.push(userEntry);
     this.messages.push({ role: "user", content: message });
 
-    // Calculate input tokens
-    const inputTokens = this.tokenCounter.countMessageTokens(
+    // Calculate initial input tokens
+    let currentTokens = this.tokenCounter.countMessageTokens(
       this.messages as any
     );
     
     // Check if we need to condense before processing
     const modelTokenLimit = getModelTokenLimit(this.llmClient.getCurrentModel());
-    if (shouldCondenseConversation(inputTokens, modelTokenLimit)) {
+    if (await shouldCondenseConversation(currentTokens, modelTokenLimit)) {
       yield {
         type: "content",
         content: "\n🔄 Token usage is approaching the limit (75%). Condensing conversation to preserve context...\n",
@@ -604,8 +606,10 @@ Current working directory: ${process.cwd()}`,
         } else {
           yield {
             type: "content",
-            content: `\n✅ Conversation condensed successfully. Token count reduced from ${inputTokens} to ${condenseResult.newContextTokens}.\n`,
+            content: `\n✅ Conversation condensed successfully. Token count reduced from ${currentTokens} to ${condenseResult.newContextTokens}.\n`,
           };
+          // Update current token count after condensing
+          currentTokens = condenseResult.newContextTokens;
         }
       } catch (error: any) {
         yield {
@@ -617,12 +621,11 @@ Current working directory: ${process.cwd()}`,
     
     yield {
       type: "token_count",
-      tokenCount: inputTokens,
+      tokenCount: currentTokens,
     };
 
     const maxToolRounds = 30; // Prevent infinite loops
     let toolRounds = 0;
-    let totalOutputTokens = 0;
 
     try {
       // Agent loop - continue until no more tool calls or max rounds reached
@@ -691,20 +694,9 @@ Current working directory: ${process.cwd()}`,
           if (chunk.choices[0].delta?.content) {
             accumulatedContent += chunk.choices[0].delta.content;
 
-            // Update token count in real-time
-            const currentOutputTokens =
-              this.tokenCounter.estimateStreamingTokens(accumulatedContent);
-            totalOutputTokens = currentOutputTokens;
-
             yield {
               type: "content",
               content: chunk.choices[0].delta.content,
-            };
-
-            // Emit token count update
-            yield {
-              type: "token_count",
-              tokenCount: inputTokens + totalOutputTokens,
             };
           }
         }
@@ -791,6 +783,44 @@ Current working directory: ${process.cwd()}`,
               tool_call_id: toolCall.id,
             });
           }
+
+          // Update token count after adding tool results and check for condensing
+          currentTokens = this.tokenCounter.countMessageTokens(this.messages as any);
+          
+          // Check if we need to condense during conversation growth
+          if (await shouldCondenseConversation(currentTokens, modelTokenLimit)) {
+            yield {
+              type: "content",
+              content: "\n🔄 Token usage reached 75% during conversation. Condensing to preserve context...\n",
+            };
+            
+            try {
+              const condenseResult = await this.performCondense(true);
+              if (condenseResult.error) {
+                yield {
+                  type: "content",
+                  content: `\n⚠️ Condense failed: ${condenseResult.error}\n`,
+                };
+              } else {
+                yield {
+                  type: "content",
+                  content: `\n✅ Conversation condensed. Token count reduced from ${currentTokens} to ${condenseResult.newContextTokens}.\n`,
+                };
+                currentTokens = condenseResult.newContextTokens;
+              }
+            } catch (error: any) {
+              yield {
+                type: "content",
+                content: `\n⚠️ Condense error: ${error.message}\n`,
+              };
+            }
+          }
+          
+          // Emit updated token count
+          yield {
+            type: "token_count",
+            tokenCount: currentTokens,
+          };
 
           // Continue the loop to get the next response (which might have more tool calls)
         } else {

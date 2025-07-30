@@ -22,6 +22,7 @@ export interface UserSettings {
   customInstructionsPath?: string;
   theme?: string;
   lastUsed?: string;
+  condenseThreshold?: number; // Percentage (0-100) when to trigger conversation condensing
 }
 
 const SETTINGS_DIR = path.join(os.homedir(), '.juriko');
@@ -168,4 +169,51 @@ export function getSettingsPath(): string {
 
 export function getSettingsFilePath(): string {
   return SETTINGS_FILE;
+}
+
+/**
+ * Get the condense threshold percentage from user settings
+ * @returns The threshold percentage (0-100), defaults to 75%
+ */
+export async function getCondenseThreshold(): Promise<number> {
+  try {
+    const settings = await loadUserSettings();
+    return settings.condenseThreshold ?? 75; // Default to 75%
+  } catch (error) {
+    logger.warn('Failed to load condense threshold, using default:', error);
+    return 75; // Default fallback
+  }
+}
+
+/**
+ * Save the condense threshold percentage to user settings
+ * @param threshold The threshold percentage (0-100)
+ */
+export async function saveCondenseThreshold(threshold: number): Promise<void> {
+  // Validate threshold is between 0 and 100
+  const validThreshold = Math.max(0, Math.min(100, threshold));
+  
+  const settings: UserSettings = {
+    condenseThreshold: validThreshold,
+  };
+  
+  await saveUserSettings(settings);
+}
+
+/**
+ * Get condense threshold from environment variable or user settings
+ * Environment variable: JURIKO_CONDENSE_THRESHOLD (0-100)
+ */
+export async function getCondenseThresholdWithEnv(): Promise<number> {
+  // First try environment variable
+  const envThreshold = process.env.JURIKO_CONDENSE_THRESHOLD;
+  if (envThreshold) {
+    const parsed = parseInt(envThreshold, 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      return parsed;
+    }
+  }
+  
+  // Then try user settings
+  return await getCondenseThreshold();
 }
