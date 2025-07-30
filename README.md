@@ -359,6 +359,43 @@ MCP servers can also provide resources (data sources) that JURIKO can access for
 
 For detailed MCP setup and troubleshooting, see [`docs/MCP_INTEGRATION.md`](docs/MCP_INTEGRATION.md).
 
+## Advanced Configuration
+
+### Token Management & Conversation Condensing
+
+JURIKO includes automatic conversation condensing to manage token usage efficiently. When conversations approach the model's token limit, JURIKO automatically summarizes older messages while preserving recent context.
+
+**Condense Threshold Configuration:**
+
+The condense threshold determines when conversation condensing is triggered (default: 75% of model's token limit).
+
+```bash
+# Set via environment variable (highest priority)
+export JURIKO_CONDENSE_THRESHOLD=80
+juriko
+
+# Or set for single session
+JURIKO_CONDENSE_THRESHOLD=85 juriko
+```
+
+**User Settings Configuration:**
+
+Edit `~/.juriko/user-settings.json`:
+```json
+{
+  "provider": "anthropic",
+  "model": "claude-3-5-sonnet-20241022",
+  "condenseThreshold": 80
+}
+```
+
+**Recommended Thresholds:**
+- **Conservative (60-70%)**: Early condensing, lower token usage
+- **Balanced (75-80%)**: Default, good balance of context and efficiency  
+- **Aggressive (85-95%)**: Maximum context retention, higher token usage
+
+For comprehensive configuration details, troubleshooting, and advanced usage patterns, see [`CONDENSE_THRESHOLD_GUIDE.md`](CONDENSE_THRESHOLD_GUIDE.md).
+
 ## Development
 
 ```bash
