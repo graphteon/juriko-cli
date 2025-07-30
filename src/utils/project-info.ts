@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import path from 'path';
 import os from 'os';
+import { readFileSync } from 'fs';
 
 export interface ProjectInfo {
   projectPath: string;
@@ -53,6 +54,16 @@ export function getProjectInfo(): ProjectInfo {
 }
 
 export function getModelDisplayName(provider: string, model: string): string {
+  // Get app version from package.json
+  let appVersion = 'v0.1.4'; // fallback version
+  try {
+    const packageJsonPath = path.join(__dirname, '../../package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    appVersion = `v${packageJson.version}`;
+  } catch (error) {
+    // Use fallback version if package.json can't be read
+  }
+  
   // Format model name for display
   const providerMap: Record<string, string> = {
     'anthropic': 'claude',
@@ -67,11 +78,11 @@ export function getModelDisplayName(provider: string, model: string): string {
   if (modelParts.length > 1) {
     // For models like "claude-3-5-sonnet-20241022"
     if (model.includes('sonnet') || model.includes('haiku') || model.includes('opus')) {
-      return `${providerPrefix}-${modelParts.slice(-2).join('-')} (100% context len)`;
+      return `${providerPrefix}-${modelParts.slice(-2).join('-')} (${appVersion})`;
     }
     // For other models
-    return `${providerPrefix}-${modelParts.slice(-1)[0]} (100% context len)`;
+    return `${providerPrefix}-${modelParts.slice(-1)[0]} (${appVersion})`;
   }
   
-  return `${providerPrefix}-${model} (100% context len)`;
+  return `${providerPrefix}-${model} (${appVersion})`;
 }

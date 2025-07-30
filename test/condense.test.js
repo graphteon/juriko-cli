@@ -1,7 +1,7 @@
-const { 
-  condenseConversation, 
-  shouldCondenseConversation, 
-  getModelTokenLimit 
+const {
+  condenseConversation,
+  shouldCondenseConversationSync,
+  getModelTokenLimit
 } = require('../dist/utils/condense.js');
 
 const { createTokenCounter } = require('../dist/utils/token-counter.js');
@@ -72,7 +72,7 @@ async function runTests() {
 
   let thresholdPassed = true;
   thresholdTests.forEach(({ tokens, limit, expected }) => {
-    const result = shouldCondenseConversation(tokens, limit);
+    const result = shouldCondenseConversationSync(tokens, limit);
     const passed = result === expected;
     console.log(`   ${tokens}/${limit} tokens: ${result} (expected: ${expected}) ${passed ? '✅' : '❌'}`);
     if (!passed) thresholdPassed = false;
@@ -130,7 +130,7 @@ async function runTests() {
     console.log(`   Invalid model fallback: ${invalidLimit} (should be 128000) ${invalidLimit === 128000 ? '✅' : '❌'}`);
     
     // Test threshold with invalid values
-    const invalidThreshold = shouldCondenseConversation(-1, 100000);
+    const invalidThreshold = shouldCondenseConversationSync(-1, 100000);
     console.log(`   Negative tokens handled: ${!invalidThreshold ? '✅' : '❌'}`);
     
     console.log('   ✅ Error handling working\n');
