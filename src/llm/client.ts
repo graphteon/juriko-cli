@@ -1,13 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { 
-  LLMProvider, 
-  LLMMessage, 
-  LLMTool, 
-  LLMResponse, 
+import {
+  LLMProvider,
+  LLMMessage,
+  LLMTool,
+  LLMResponse,
   LLMConfig,
-  LLMToolCall 
+  LLMToolCall
 } from './types';
+import { safeParseArguments } from '../utils/argument-parser';
 
 export interface SearchOptions {
   search_parameters?: {
@@ -101,7 +102,7 @@ export class LLMClient {
               type: 'tool_use',
               id: tc.id,
               name: tc.function.name,
-              input: JSON.parse(tc.function.arguments),
+              input: safeParseArguments(tc.function.arguments),
             }))
           ]
         };

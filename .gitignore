@@ -91,3 +91,4 @@ temp/
 
 # Coding agents
 .claude/
+debug-*.js
