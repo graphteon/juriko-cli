@@ -2,6 +2,7 @@ import { MCPTool, MCPToolCall, MCPToolResult } from './types';
 import { jurikoMCPClient } from './client';
 import { JurikoTool } from '../juriko/client';
 import { logger } from '../utils/logger';
+import { validateArgumentTypes } from '../utils/argument-parser';
 
 /**
  * Integration layer that converts MCP tools to Juriko tools format
@@ -137,50 +138,7 @@ export class MCPToolsIntegration {
    * Validate arguments against input schema
    */
   private validateArguments(args: any, schema: any): string | null {
-    if (!schema || !schema.properties) {
-      return null; // No validation if schema is not available
-    }
-
-    // Check required properties
-    if (schema.required) {
-      for (const requiredProp of schema.required) {
-        if (!(requiredProp in args)) {
-          return `Missing required property: ${requiredProp}`;
-        }
-      }
-    }
-
-    // Basic type validation for known properties
-    for (const [propName, propSchema] of Object.entries(schema.properties)) {
-      if (propName in args) {
-        const value = args[propName];
-        const propSchemaObj = propSchema as any;
-        
-        if (propSchemaObj.type) {
-          const expectedType = propSchemaObj.type;
-          const actualType = typeof value;
-          
-          // Simple type checking
-          if (expectedType === 'string' && actualType !== 'string') {
-            return `Property ${propName} should be a string, got ${actualType}`;
-          }
-          if (expectedType === 'number' && actualType !== 'number') {
-            return `Property ${propName} should be a number, got ${actualType}`;
-          }
-          if (expectedType === 'boolean' && actualType !== 'boolean') {
-            return `Property ${propName} should be a boolean, got ${actualType}`;
-          }
-          if (expectedType === 'array' && !Array.isArray(value)) {
-            return `Property ${propName} should be an array`;
-          }
-          if (expectedType === 'object' && (actualType !== 'object' || Array.isArray(value))) {
-            return `Property ${propName} should be an object`;
-          }
-        }
-      }
-    }
-
-    return null;
+    return validateArgumentTypes(args, schema);
   }
 
   /**

@@ -12,6 +12,7 @@ import {
   getModelTokenLimit,
   CondenseResponse
 } from "../utils/condense";
+import { parseToolCallArguments, validateArgumentTypes } from "../utils/argument-parser";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -921,7 +922,22 @@ Current working directory: ${process.cwd()}`,
 
   private async executeTool(toolCall: LLMToolCall): Promise<ToolResult> {
     try {
-      const args = JSON.parse(toolCall.function.arguments);
+      const args = parseToolCallArguments(toolCall);
+
+      // Get the tool schema for validation
+      const availableTools = await this.getAvailableTools();
+      const toolSchema = availableTools.find(tool => tool.function.name === toolCall.function.name);
+      
+      // Validate and auto-parse arguments if schema is available
+      if (toolSchema?.function?.parameters) {
+        const validationError = validateArgumentTypes(args, toolSchema.function.parameters);
+        if (validationError) {
+          return {
+            success: false,
+            error: `Argument validation failed: ${validationError}`,
+          };
+        }
+      }
 
       switch (toolCall.function.name) {
         case "view_file":
