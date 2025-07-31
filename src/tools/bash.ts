@@ -31,7 +31,8 @@ export class BashTool {
         }
       }
 
-      if (command.startsWith('cd ')) {
+      // Handle compound commands with && - don't treat them as simple cd commands
+      if (command.startsWith('cd ') && !command.includes('&&')) {
         const newDir = command.substring(3).trim();
         try {
           process.chdir(newDir);
