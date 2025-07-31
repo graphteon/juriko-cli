@@ -184,7 +184,7 @@ export const JURIKO_TOOLS: JurikoTool[] = [
             description: "Optional context about why condensing is needed (e.g., 'Token limit approaching')",
           },
         },
-        required: [],
+        required: ["context"],
       },
     },
   },
