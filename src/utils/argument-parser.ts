@@ -78,10 +78,45 @@ export function validateArgumentTypes(args: any, schema: any): string | null {
         if (expectedType === 'string' && actualType !== 'string') {
           return `Property ${propName} should be a string, got ${actualType}`;
         }
-        if (expectedType === 'number' && actualType !== 'number') {
+        if (expectedType === 'number') {
+          // Check if it's already a number
+          if (actualType === 'number') {
+            // It's already a valid number, continue
+            continue;
+          }
+          // If it's a string, try to convert it to number
+          if (actualType === 'string') {
+            const numValue = Number(value);
+            if (!isNaN(numValue) && isFinite(numValue)) {
+              // Update the args with the converted number
+              args[propName] = numValue;
+              continue;
+            }
+          }
           return `Property ${propName} should be a number, got ${actualType}`;
         }
-        if (expectedType === 'boolean' && actualType !== 'boolean') {
+        if (expectedType === 'boolean') {
+          // Check if it's already a boolean
+          if (actualType === 'boolean') {
+            // It's already a valid boolean, continue
+            continue;
+          }
+          // If it's a string, try to convert it to boolean
+          if (actualType === 'string') {
+            const lowerValue = value.toLowerCase();
+            if (lowerValue === 'true' || lowerValue === '1') {
+              args[propName] = true;
+              continue;
+            } else if (lowerValue === 'false' || lowerValue === '0') {
+              args[propName] = false;
+              continue;
+            }
+          }
+          // If it's a number, convert to boolean
+          if (actualType === 'number') {
+            args[propName] = Boolean(value);
+            continue;
+          }
           return `Property ${propName} should be a boolean, got ${actualType}`;
         }
         // Handle array type validation and parsing moved to later section

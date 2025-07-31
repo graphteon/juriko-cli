@@ -113,4 +113,79 @@ try {
   console.log('❌ Test 8 failed:', error.message);
 }
 
+// Test 9: Number type conversion
+try {
+  const args9 = {
+    path: '/test/file.txt',
+    start_line: '10',
+    end_line: '20'
+  };
+  const schema9 = {
+    properties: {
+      path: { type: 'string' },
+      start_line: { type: 'number' },
+      end_line: { type: 'number' }
+    },
+    required: ['path']
+  };
+  const result9 = validateArgumentTypes(args9, schema9);
+  if (result9 === null && typeof args9.start_line === 'number' && typeof args9.end_line === 'number') {
+    console.log('✅ Test 9 passed: String to number conversion', args9);
+  } else {
+    console.log('❌ Test 9 failed:', result9, args9);
+  }
+} catch (error) {
+  console.log('❌ Test 9 failed:', error.message);
+}
+
+// Test 10: Boolean type conversion
+try {
+  const args10 = {
+    enabled: 'true',
+    debug: 'false',
+    verbose: '1',
+    quiet: '0'
+  };
+  const schema10 = {
+    properties: {
+      enabled: { type: 'boolean' },
+      debug: { type: 'boolean' },
+      verbose: { type: 'boolean' },
+      quiet: { type: 'boolean' }
+    }
+  };
+  const result10 = validateArgumentTypes(args10, schema10);
+  if (result10 === null &&
+      args10.enabled === true &&
+      args10.debug === false &&
+      args10.verbose === true &&
+      args10.quiet === false) {
+    console.log('✅ Test 10 passed: String to boolean conversion', args10);
+  } else {
+    console.log('❌ Test 10 failed:', result10, args10);
+  }
+} catch (error) {
+  console.log('❌ Test 10 failed:', error.message);
+}
+
+// Test 11: Invalid number conversion
+try {
+  const args11 = {
+    count: 'not-a-number'
+  };
+  const schema11 = {
+    properties: {
+      count: { type: 'number' }
+    }
+  };
+  const result11 = validateArgumentTypes(args11, schema11);
+  if (result11 !== null) {
+    console.log('✅ Test 11 passed: Invalid number detected:', result11);
+  } else {
+    console.log('❌ Test 11 failed: Should have detected invalid number');
+  }
+} catch (error) {
+  console.log('❌ Test 11 failed:', error.message);
+}
+
 console.log('\nAll tests completed!');
