@@ -70,6 +70,9 @@ program
   .option("-d, --directory <dir>", "set working directory", process.cwd())
   .option("-k, --api-key <key>", "AI API key (or set JURIKO_API_KEY env var)")
   .option("-u, --base-url <url>", "AI API base URL (or set JURIKO_BASE_URL env var)")
+  .option("--concise", "enable concise response mode (< 4 lines)")
+  .option("--verbose", "enable verbose response mode with explanations")
+  .option("--security-level <level>", "set security validation level (low|medium|high)", "medium")
   .action((options) => {
     if (options.directory) {
       try {
@@ -87,6 +90,18 @@ program
       // Set API keys from command line options if provided
       if (options.apiKey) {
         process.env.JURIKO_API_KEY = options.apiKey;
+      }
+
+      // Set response style options
+      if (options.concise) {
+        process.env.JURIKO_RESPONSE_STYLE = 'concise';
+      } else if (options.verbose) {
+        process.env.JURIKO_RESPONSE_STYLE = 'verbose';
+      }
+
+      // Set security level
+      if (options.securityLevel) {
+        process.env.JURIKO_SECURITY_LEVEL = options.securityLevel;
       }
 
       logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-08-02
+
+### Added
+- **Response Style Control**: New `--concise` and `--verbose` CLI flags for controlling response verbosity
+- **Modular System Prompt**: New `SystemPromptBuilder` class for dynamic prompt construction
+- **Response Formatter**: Advanced text processing with pattern-based optimization
+- **Security Levels**: Configurable security validation with `--security-level` option
+- **Performance Metrics**: Response optimization tracking and token usage reduction
+- **Enhanced Communication Guidelines**: Claude Code-inspired behavioral patterns
+
+### Changed
+- **System Prompt Architecture**: Refactored from static to modular prompt building
+- **Agent Constructor**: Enhanced with response style configuration and environment detection
+- **CLI Interface**: Added new flags for response style and security level control
+
+### Improved
+- **Token Efficiency**: Up to 65% reduction in response length for verbose content
+- **User Experience**: More direct and focused responses in concise mode
+- **Code Quality**: Better separation of concerns with modular prompt system
+- **Documentation**: Comprehensive guides for new features and implementation
+
+### Technical Details
+- New files: `src/agent/prompts/system-prompt-builder.ts`, `src/utils/response-formatter.ts`
+- Updated files: `src/index.ts`, `src/agent/multi-llm-agent.ts`, `package.json`
+- Test coverage: Added response style testing and validation
+- Performance: Significant token usage optimization for API cost reduction
+
 ## [Unreleased]
 
 ### Added

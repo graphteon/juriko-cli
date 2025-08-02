@@ -184,6 +184,28 @@ Or specify a working directory:
 juriko -d /path/to/project
 ```
 
+### Response Style Options
+
+Control the verbosity and communication style of JURIKO responses:
+
+```bash
+# Concise mode - short, direct responses (< 4 lines)
+juriko --concise
+
+# Verbose mode - detailed explanations and context
+juriko --verbose
+
+# Security level control
+juriko --security-level high    # Strict validation
+juriko --security-level medium  # Standard validation (default)
+juriko --security-level low     # Basic validation
+```
+
+**Response Style Benefits:**
+- **Concise Mode**: Up to 65% reduction in response length, faster interactions
+- **Verbose Mode**: Full explanations for learning and complex tasks
+- **Balanced Mode** (default): Optimal mix of efficiency and helpfulness
+
 ### First Run Experience
 
 On your first run, JURIKO will guide you through:
@@ -233,6 +255,32 @@ Instead of typing commands, just tell JURIKO what you want to do:
 💬 "Replace 'oldFunction' with 'newFunction' in all JS files"
 💬 "Run the tests and show me the results"
 💬 "What's the current directory structure?"
+```
+
+### Response Style Examples
+
+**Concise Mode (`--concise`):**
+```
+❯ view package.json
+[file contents displayed directly]
+
+❯ what files are in src?
+- index.ts
+- agent/
+- tools/
+- ui/
+```
+
+**Verbose Mode (`--verbose`):**
+```
+❯ view package.json
+I'll help you view the package.json file. Let me use the view_file tool to read the contents for you.
+
+This will show you all the dependencies, scripts, and configuration details in your package.json file.
+
+[file contents with detailed explanations]
+
+The package.json contains your project configuration including dependencies like React, TypeScript, and various development tools.
 ```
 
 ### Using with Local LLMs
@@ -413,6 +461,15 @@ npm run lint
 
 # Type check
 npm run typecheck
+
+# Test response styles
+npm run test:response-style
+
+# Test concise mode
+npm run test:concise
+
+# Test verbose mode
+npm run test:verbose
 ```
 
 ## Architecture
