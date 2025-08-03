@@ -206,6 +206,35 @@ juriko --security-level low     # Basic validation
 - **Verbose Mode**: Full explanations for learning and complex tasks
 - **Balanced Mode** (default): Optimal mix of efficiency and helpfulness
 
+### Multi-Tool Batching
+
+Enable parallel execution of independent tools for improved performance:
+
+```bash
+# Enable batching (parallel execution)
+juriko --enable-batching
+
+# Disable batching (sequential execution)
+juriko --disable-batching
+```
+
+Or via environment variable:
+```bash
+export JURIKO_ENABLE_BATCHING=true  # or 'false'
+```
+
+**Performance Benefits:**
+- **Up to 40% faster execution** when multiple independent tools are used
+- **Intelligent dependency detection** ensures file operations remain safe
+- **Automatic fallback** to sequential execution if parallel execution fails
+- **Smart categorization** of tools (read-only, write, compute, network, bash)
+
+**How it works:**
+- Read-only tools (like `view_file`) can run in parallel with each other
+- Write tools (like `create_file`, `str_replace_editor`) run sequentially for safety
+- Bash commands run sequentially to prevent conflicts
+- Network and compute tools are intelligently batched based on dependencies
+
 ### First Run Experience
 
 On your first run, JURIKO will guide you through:

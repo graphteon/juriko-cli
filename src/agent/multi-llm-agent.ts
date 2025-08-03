@@ -15,6 +15,7 @@ import {
 import { parseToolCallArguments, validateArgumentTypes } from "../utils/argument-parser";
 import { SystemPromptBuilder, PromptOptions } from "./prompts/system-prompt-builder";
 import { ResponseFormatter, ResponseStyle } from "../utils/response-formatter";
+import { BatchToolExecutor, BatchResult } from "../tools/batch-executor";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -206,6 +207,8 @@ export class MultiLLMAgent extends EventEmitter {
   private abortController: AbortController | null = null;
   private llmConfig: LLMConfig;
   private responseStyle: ResponseStyle;
+  private batchExecutor: BatchToolExecutor;
+  private enableBatching: boolean;
 
   constructor(llmClient: LLMClient, llmConfig?: LLMConfig) {
     super();
@@ -224,6 +227,10 @@ export class MultiLLMAgent extends EventEmitter {
 
     // Initialize response style from environment variables
     this.responseStyle = this.getResponseStyleFromEnv();
+
+    // Initialize batch executor
+    this.batchExecutor = new BatchToolExecutor();
+    this.enableBatching = this.getBatchingEnabledFromEnv();
 
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
@@ -269,6 +276,11 @@ export class MultiLLMAgent extends EventEmitter {
       return level;
     }
     return 'medium'; // Default
+  }
+
+  private getBatchingEnabledFromEnv(): boolean {
+    const enabled = process.env.JURIKO_ENABLE_BATCHING?.toLowerCase();
+    return enabled === 'true' || enabled === '1';
   }
 
   setResponseStyle(style: ResponseStyle): void {
@@ -417,30 +429,97 @@ export class MultiLLMAgent extends EventEmitter {
             tool_calls: assistantMessage.tool_calls,
           });
 
-          // Execute tool calls
-          for (const toolCall of assistantMessage.tool_calls) {
-            const result = await this.executeTool(toolCall);
+          // Execute tool calls with batching if enabled
+          if (this.enableBatching && assistantMessage.tool_calls.length > 1) {
+            try {
+              const batchResponse = await this.batchExecutor.executeBatch(
+                assistantMessage.tool_calls,
+                (toolCall) => this.executeTool(toolCall)
+              );
+              
+              // Process batch results
+              for (let i = 0; i < assistantMessage.tool_calls.length; i++) {
+                const toolCall = assistantMessage.tool_calls[i];
+                const batchResult = batchResponse.results[i];
+                const result = batchResult.success
+                  ? { success: true, output: batchResult.output }
+                  : { success: false, error: batchResult.error };
 
-            const toolResultEntry: ChatEntry = {
-              type: "tool_result",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error occurred",
-              timestamp: new Date(),
-              toolCall: toolCall,
-              toolResult: result,
-            };
-            this.chatHistory.push(toolResultEntry);
-            newEntries.push(toolResultEntry);
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+                newEntries.push(toolResultEntry);
 
-            // Add tool result to messages with proper format (needed for AI context)
-            this.messages.push({
-              role: "tool",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error",
-              tool_call_id: toolCall.id,
-            });
+                // Add tool result to messages with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
+            } catch (error) {
+              console.error('Batch execution failed, falling back to sequential:', error);
+              // Fall back to sequential execution
+              for (const toolCall of assistantMessage.tool_calls) {
+                const result = await this.executeTool(toolCall);
+
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+                newEntries.push(toolResultEntry);
+
+                // Add tool result to messages with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
+            }
+          } else {
+            // Execute tool calls sequentially
+            for (const toolCall of assistantMessage.tool_calls) {
+              const result = await this.executeTool(toolCall);
+
+              const toolResultEntry: ChatEntry = {
+                type: "tool_result",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error occurred",
+                timestamp: new Date(),
+                toolCall: toolCall,
+                toolResult: result,
+              };
+              this.chatHistory.push(toolResultEntry);
+              newEntries.push(toolResultEntry);
+
+              // Add tool result to messages with proper format (needed for AI context)
+              this.messages.push({
+                role: "tool",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error",
+                tool_call_id: toolCall.id,
+              });
+            }
           }
 
           // Get next response - this might contain more tool calls
@@ -752,45 +831,142 @@ export class MultiLLMAgent extends EventEmitter {
             }
           }
 
-          // Execute tools
-          for (const toolCall of accumulatedMessage.tool_calls) {
-            // Check for cancellation before executing each tool
-            if (this.abortController?.signal.aborted) {
-              yield {
-                type: "content",
-                content: "\n\n[Operation cancelled by user]",
-              };
-              yield { type: "done" };
-              return;
+          // Execute tools with batching if enabled
+          if (this.enableBatching && accumulatedMessage.tool_calls.length > 1) {
+            try {
+              const batchResponse = await this.batchExecutor.executeBatch(
+                accumulatedMessage.tool_calls,
+                (toolCall) => this.executeTool(toolCall)
+              );
+              
+              // Process batch results
+              for (let i = 0; i < accumulatedMessage.tool_calls.length; i++) {
+                // Check for cancellation before processing each result
+                if (this.abortController?.signal.aborted) {
+                  yield {
+                    type: "content",
+                    content: "\n\n[Operation cancelled by user]",
+                  };
+                  yield { type: "done" };
+                  return;
+                }
+
+                const toolCall = accumulatedMessage.tool_calls[i];
+                const batchResult = batchResponse.results[i];
+                const result = batchResult.success
+                  ? { success: true, output: batchResult.output }
+                  : { success: false, error: batchResult.error };
+
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+
+                yield {
+                  type: "tool_result",
+                  toolCall,
+                  toolResult: result,
+                };
+
+                // Add tool result with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
+            } catch (error) {
+              console.error('Batch execution failed, falling back to sequential:', error);
+              // Fall back to sequential execution
+              for (const toolCall of accumulatedMessage.tool_calls) {
+                // Check for cancellation before executing each tool
+                if (this.abortController?.signal.aborted) {
+                  yield {
+                    type: "content",
+                    content: "\n\n[Operation cancelled by user]",
+                  };
+                  yield { type: "done" };
+                  return;
+                }
+
+                const result = await this.executeTool(toolCall);
+
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+
+                yield {
+                  type: "tool_result",
+                  toolCall,
+                  toolResult: result,
+                };
+
+                // Add tool result with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
             }
+          } else {
+            // Execute tools sequentially
+            for (const toolCall of accumulatedMessage.tool_calls) {
+              // Check for cancellation before executing each tool
+              if (this.abortController?.signal.aborted) {
+                yield {
+                  type: "content",
+                  content: "\n\n[Operation cancelled by user]",
+                };
+                yield { type: "done" };
+                return;
+              }
 
-            const result = await this.executeTool(toolCall);
+              const result = await this.executeTool(toolCall);
 
-            const toolResultEntry: ChatEntry = {
-              type: "tool_result",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error occurred",
-              timestamp: new Date(),
-              toolCall: toolCall,
-              toolResult: result,
-            };
-            this.chatHistory.push(toolResultEntry);
+              const toolResultEntry: ChatEntry = {
+                type: "tool_result",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error occurred",
+                timestamp: new Date(),
+                toolCall: toolCall,
+                toolResult: result,
+              };
+              this.chatHistory.push(toolResultEntry);
 
-            yield {
-              type: "tool_result",
-              toolCall,
-              toolResult: result,
-            };
+              yield {
+                type: "tool_result",
+                toolCall,
+                toolResult: result,
+              };
 
-            // Add tool result with proper format (needed for AI context)
-            this.messages.push({
-              role: "tool",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error",
-              tool_call_id: toolCall.id,
-            });
+              // Add tool result with proper format (needed for AI context)
+              this.messages.push({
+                role: "tool",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error",
+                tool_call_id: toolCall.id,
+              });
+            }
           }
 
           // Update token count after adding tool results and check for condensing

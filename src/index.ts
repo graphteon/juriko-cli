@@ -73,6 +73,8 @@ program
   .option("--concise", "enable concise response mode (< 4 lines)")
   .option("--verbose", "enable verbose response mode with explanations")
   .option("--security-level <level>", "set security validation level (low|medium|high)", "medium")
+  .option("--enable-batching", "enable parallel execution of independent tools")
+  .option("--disable-batching", "disable parallel execution (use sequential execution)")
   .action((options) => {
     if (options.directory) {
       try {
@@ -102,6 +104,13 @@ program
       // Set security level
       if (options.securityLevel) {
         process.env.JURIKO_SECURITY_LEVEL = options.securityLevel;
+      }
+
+      // Set batching options
+      if (options.enableBatching) {
+        process.env.JURIKO_ENABLE_BATCHING = 'true';
+      } else if (options.disableBatching) {
+        process.env.JURIKO_ENABLE_BATCHING = 'false';
       }
 
       logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
