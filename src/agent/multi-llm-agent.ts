@@ -16,6 +16,7 @@ import { parseToolCallArguments, validateArgumentTypes } from "../utils/argument
 import { SystemPromptBuilder, PromptOptions } from "./prompts/system-prompt-builder";
 import { ResponseFormatter, ResponseStyle } from "../utils/response-formatter";
 import { BatchToolExecutor, BatchResult } from "../tools/batch-executor";
+import { getEffectiveSettings } from "../utils/user-settings";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -225,36 +226,82 @@ export class MultiLLMAgent extends EventEmitter {
     // Initialize token counter with the current model for accurate counting
     this.tokenCounter = createTokenCounter(this.llmClient.getCurrentModel());
 
-    // Initialize response style from environment variables
-    this.responseStyle = this.getResponseStyleFromEnv();
-
     // Initialize batch executor
     this.batchExecutor = new BatchToolExecutor();
-    this.enableBatching = this.getBatchingEnabledFromEnv();
 
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
       console.warn('Failed to initialize MCP system:', error.message);
     });
 
-    // Build system prompt using new modular approach
-    const customInstructions = loadCustomInstructions();
-    const promptOptions: PromptOptions = {
-      concise: this.responseStyle.concise,
-      securityLevel: this.getSecurityLevelFromEnv(),
-      customInstructions,
-      workingDirectory: process.cwd(),
-      enableCodeReferences: this.getCodeReferencesEnabledFromEnv(),
-      enableBatching: this.enableBatching
-    };
+    // Initialize settings and build system prompt (async)
+    this.initializeSettings();
+  }
 
-    const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
+  private async initializeSettings(): Promise<void> {
+    try {
+      // Get effective settings (user config + env overrides)
+      const settings = await getEffectiveSettings();
+      
+      // Initialize response style
+      this.responseStyle = this.createResponseStyleFromSettings(settings.responseStyle);
+      
+      // Initialize batching
+      this.enableBatching = settings.enableBatching;
 
-    // Initialize with system message
-    this.messages.push({
-      role: "system",
-      content: systemPrompt,
-    });
+      // Build system prompt using settings
+      const customInstructions = loadCustomInstructions();
+      const promptOptions: PromptOptions = {
+        concise: this.responseStyle.concise,
+        securityLevel: settings.securityLevel,
+        customInstructions,
+        workingDirectory: process.cwd(),
+        enableCodeReferences: settings.enableCodeReferences,
+        enableBatching: settings.enableBatching
+      };
+
+      const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
+
+      // Initialize with system message
+      this.messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    } catch (error) {
+      console.warn('Failed to load user settings, using defaults:', error);
+      
+      // Fallback to environment variables and defaults
+      this.responseStyle = this.getResponseStyleFromEnv();
+      this.enableBatching = this.getBatchingEnabledFromEnv();
+
+      const customInstructions = loadCustomInstructions();
+      const promptOptions: PromptOptions = {
+        concise: this.responseStyle.concise,
+        securityLevel: this.getSecurityLevelFromEnv(),
+        customInstructions,
+        workingDirectory: process.cwd(),
+        enableCodeReferences: this.getCodeReferencesEnabledFromEnv(),
+        enableBatching: this.enableBatching
+      };
+
+      const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
+
+      this.messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+  }
+
+  private createResponseStyleFromSettings(style: 'concise' | 'verbose' | 'balanced'): ResponseStyle {
+    switch (style) {
+      case 'concise':
+        return ResponseFormatter.createConciseStyle();
+      case 'verbose':
+        return ResponseFormatter.createVerboseStyle();
+      default:
+        return ResponseFormatter.createBalancedStyle();
+    }
   }
 
   private getResponseStyleFromEnv(): ResponseStyle {
@@ -291,14 +338,54 @@ export class MultiLLMAgent extends EventEmitter {
   setResponseStyle(style: ResponseStyle): void {
     this.responseStyle = style;
     // Rebuild system prompt with new style
-    this.rebuildSystemPrompt();
+    this.rebuildSystemPrompt().catch(error => {
+      console.warn('Failed to rebuild system prompt:', error);
+    });
   }
 
   getResponseStyle(): ResponseStyle {
     return { ...this.responseStyle };
   }
 
-  private rebuildSystemPrompt(): void {
+  private async rebuildSystemPrompt(): Promise<void> {
+    try {
+      // Get current effective settings
+      const settings = await getEffectiveSettings();
+      
+      // Update response style
+      this.responseStyle = this.createResponseStyleFromSettings(settings.responseStyle);
+      
+      // Update batching
+      this.enableBatching = settings.enableBatching;
+
+      const customInstructions = loadCustomInstructions();
+      const promptOptions: PromptOptions = {
+        concise: this.responseStyle.concise,
+        securityLevel: settings.securityLevel,
+        customInstructions,
+        workingDirectory: process.cwd(),
+        enableCodeReferences: settings.enableCodeReferences,
+        enableBatching: settings.enableBatching
+      };
+
+      const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
+
+      // Update the system message
+      const systemMessageIndex = this.messages.findIndex(m => m.role === 'system');
+      if (systemMessageIndex !== -1) {
+        this.messages[systemMessageIndex] = {
+          role: "system",
+          content: systemPrompt,
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to rebuild system prompt with user settings:', error);
+      // Fallback to environment-based rebuild
+      this.rebuildSystemPromptFromEnv();
+    }
+  }
+
+  private rebuildSystemPromptFromEnv(): void {
     const customInstructions = loadCustomInstructions();
     const promptOptions: PromptOptions = {
       concise: this.responseStyle.concise,

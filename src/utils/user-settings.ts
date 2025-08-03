@@ -23,6 +23,18 @@ export interface UserSettings {
   theme?: string;
   lastUsed?: string;
   condenseThreshold?: number; // Percentage (0-100) when to trigger conversation condensing
+  
+  // Response style settings
+  responseStyle?: 'concise' | 'verbose' | 'balanced';
+  
+  // Beta features (disabled by default)
+  betaFeatures?: {
+    enableBatching?: boolean; // Multi-tool batching (BETA)
+    enableCodeReferences?: boolean; // Clickable code references (BETA)
+  };
+  
+  // Security settings
+  securityLevel?: 'low' | 'medium' | 'high';
 }
 
 const SETTINGS_DIR = path.join(os.homedir(), '.juriko');
@@ -216,4 +228,141 @@ export async function getCondenseThresholdWithEnv(): Promise<number> {
   
   // Then try user settings
   return await getCondenseThreshold();
+}
+
+/**
+ * Get response style from user settings with environment variable override
+ */
+export async function getResponseStyle(): Promise<'concise' | 'verbose' | 'balanced'> {
+  // First try environment variable
+  const envStyle = process.env.JURIKO_RESPONSE_STYLE;
+  if (envStyle === 'concise' || envStyle === 'verbose' || envStyle === 'balanced') {
+    return envStyle;
+  }
+  
+  // Then try user settings
+  const settings = await loadUserSettings();
+  return settings.responseStyle ?? 'balanced'; // Default to balanced
+}
+
+/**
+ * Save response style to user settings
+ */
+export async function saveResponseStyle(style: 'concise' | 'verbose' | 'balanced'): Promise<void> {
+  const settings: UserSettings = {
+    responseStyle: style,
+  };
+  
+  await saveUserSettings(settings);
+}
+
+/**
+ * Get beta features settings with environment variable overrides
+ */
+export async function getBetaFeatures(): Promise<{ enableBatching: boolean; enableCodeReferences: boolean }> {
+  const settings = await loadUserSettings();
+  
+  // Default beta features to disabled
+  let enableBatching = settings.betaFeatures?.enableBatching ?? false;
+  let enableCodeReferences = settings.betaFeatures?.enableCodeReferences ?? false;
+  
+  // Environment variable overrides
+  const envBatching = process.env.JURIKO_ENABLE_BATCHING?.toLowerCase();
+  if (envBatching === 'true' || envBatching === '1') {
+    enableBatching = true;
+  } else if (envBatching === 'false' || envBatching === '0') {
+    enableBatching = false;
+  }
+  
+  const envCodeReferences = process.env.JURIKO_ENABLE_CODE_REFERENCES?.toLowerCase();
+  if (envCodeReferences === 'true' || envCodeReferences === '1') {
+    enableCodeReferences = true;
+  } else if (envCodeReferences === 'false' || envCodeReferences === '0') {
+    enableCodeReferences = false;
+  }
+  
+  return { enableBatching, enableCodeReferences };
+}
+
+/**
+ * Save beta features settings
+ */
+export async function saveBetaFeatures(enableBatching: boolean, enableCodeReferences: boolean): Promise<void> {
+  const settings: UserSettings = {
+    betaFeatures: {
+      enableBatching,
+      enableCodeReferences,
+    },
+  };
+  
+  await saveUserSettings(settings);
+}
+
+/**
+ * Get security level from user settings with environment variable override
+ */
+export async function getSecurityLevel(): Promise<'low' | 'medium' | 'high'> {
+  // First try environment variable
+  const envLevel = process.env.JURIKO_SECURITY_LEVEL;
+  if (envLevel === 'low' || envLevel === 'medium' || envLevel === 'high') {
+    return envLevel;
+  }
+  
+  // Then try user settings
+  const settings = await loadUserSettings();
+  return settings.securityLevel ?? 'medium'; // Default to medium
+}
+
+/**
+ * Save security level to user settings
+ */
+export async function saveSecurityLevel(level: 'low' | 'medium' | 'high'): Promise<void> {
+  const settings: UserSettings = {
+    securityLevel: level,
+  };
+  
+  await saveUserSettings(settings);
+}
+
+/**
+ * Get all effective settings (user settings + environment overrides)
+ */
+export async function getEffectiveSettings(): Promise<{
+  responseStyle: 'concise' | 'verbose' | 'balanced';
+  enableBatching: boolean;
+  enableCodeReferences: boolean;
+  securityLevel: 'low' | 'medium' | 'high';
+  condenseThreshold: number;
+}> {
+  const [responseStyle, betaFeatures, securityLevel, condenseThreshold] = await Promise.all([
+    getResponseStyle(),
+    getBetaFeatures(),
+    getSecurityLevel(),
+    getCondenseThresholdWithEnv(),
+  ]);
+  
+  return {
+    responseStyle,
+    enableBatching: betaFeatures.enableBatching,
+    enableCodeReferences: betaFeatures.enableCodeReferences,
+    securityLevel,
+    condenseThreshold,
+  };
+}
+
+/**
+ * Reset all settings to defaults
+ */
+export async function resetAllSettings(): Promise<void> {
+  const defaultSettings: UserSettings = {
+    responseStyle: 'balanced',
+    betaFeatures: {
+      enableBatching: false,
+      enableCodeReferences: false,
+    },
+    securityLevel: 'medium',
+    condenseThreshold: 75,
+  };
+  
+  await saveUserSettings(defaultSettings);
 }

@@ -6,6 +6,7 @@ import { ToolResult } from '../../types';
 import ToolCallBox from './tool-call-box';
 import { ConfirmationService, ConfirmationOptions } from '../../utils/confirmation-service';
 import ConfirmationDialog from './confirmation-dialog';
+import { SettingsMenu } from './settings-menu';
 import { logger } from '../../utils/logger';
 
 interface StreamingChatProps {
@@ -30,6 +31,7 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
   const [currentStreamingContent, setCurrentStreamingContent] = useState('');
   const [tokenCount, setTokenCount] = useState(0);
   const [confirmationOptions, setConfirmationOptions] = useState<ConfirmationOptions | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const { exit } = useApp();
   const isMountedRef = useRef(true);
   const contentBufferRef = useRef('');
@@ -99,7 +101,7 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
   };
 
   useInput(async (inputChar: string, key: any) => {
-    if (!isMountedRef.current || confirmationOptions) return;
+    if (!isMountedRef.current || confirmationOptions || showSettings) return;
 
     if (key.ctrl && inputChar === 'c') {
       if (isProcessing) {
@@ -171,6 +173,15 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
         return;
       }
 
+      // Handle /settings command to open settings menu
+      if (input.trim() === '/settings' || input.trim() === 'settings') {
+        setShowSettings(true);
+        if (isMountedRef.current) {
+          setInput('');
+        }
+        return;
+      }
+
       // Handle /history command to show chat history info
       if (input.trim() === '/history' || input.trim() === 'history') {
         const agentHistory = agent.getChatHistory();
@@ -184,6 +195,7 @@ Current session messages: ${messages.length}
 Commands:
 - /clear or clear - Clear chat history
 - /history or history - Show this info
+- /settings or settings - Open settings menu
 - Type normally to continue chatting
 
 The chat history is automatically saved and will persist between sessions.`,
@@ -414,6 +426,13 @@ The chat history is automatically saved and will persist between sessions.`,
     }
   }, []);
 
+  // If settings menu is active, show it instead of the chat
+  if (showSettings) {
+    return (
+      <SettingsMenu onClose={() => setShowSettings(false)} />
+    );
+  }
+
   // If confirmation dialog is active, show it instead of the chat
   if (confirmationOptions) {
     return (
@@ -437,7 +456,7 @@ The chat history is automatically saved and will persist between sessions.`,
         
         <Box flexDirection="column" marginBottom={1}>
           <Text dimColor>Available commands: view, str_replace, create, insert, undo_edit, bash, help</Text>
-          <Text dimColor>Type 'provider' to switch provider/model, '/history' for chat history, '/clear' to clear history</Text>
+          <Text dimColor>Type 'provider' to switch provider/model, '/settings' for settings, '/history' for chat history, '/clear' to clear history</Text>
           <Text dimColor>Press 's' to stop operation, ESC to cancel, Ctrl+P to switch provider/model, 'exit' or Ctrl+C to quit</Text>
         </Box>
 
