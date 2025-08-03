@@ -50,13 +50,24 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
     }
   };
 
-  const saveCurrentSettings = async (newSettings: Settings) => {
+  const saveIndividualSetting = async (key: string, value: any) => {
     try {
-      await Promise.all([
-        saveResponseStyle(newSettings.responseStyle),
-        saveBetaFeatures(newSettings.enableBatching, newSettings.enableCodeReferences),
-        saveSecurityLevel(newSettings.securityLevel),
-      ]);
+      switch (key) {
+        case 'responseStyle':
+          await saveResponseStyle(value);
+          break;
+        case 'enableBatching':
+        case 'enableCodeReferences':
+          // For beta features, we need both values
+          const currentSettings = await getEffectiveSettings();
+          const enableBatching = key === 'enableBatching' ? value : currentSettings.enableBatching;
+          const enableCodeReferences = key === 'enableCodeReferences' ? value : currentSettings.enableCodeReferences;
+          await saveBetaFeatures(enableBatching, enableCodeReferences);
+          break;
+        case 'securityLevel':
+          await saveSecurityLevel(value);
+          break;
+      }
       
       setSaveStatus('✅ Settings saved successfully!');
       setTimeout(() => setSaveStatus(null), 2000);
@@ -78,7 +89,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
     }
   };
 
-  useInput((input, key) => {
+  useInput(async (input, key) => {
     if (!settings) return;
 
     if (key.upArrow) {
@@ -96,11 +107,13 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
         const newSettings = { ...settings };
         if (selectedItem.key === 'enableBatching') {
           newSettings.enableBatching = !newSettings.enableBatching;
+          setSettings(newSettings);
+          await saveIndividualSetting('enableBatching', newSettings.enableBatching);
         } else if (selectedItem.key === 'enableCodeReferences') {
           newSettings.enableCodeReferences = !newSettings.enableCodeReferences;
+          setSettings(newSettings);
+          await saveIndividualSetting('enableCodeReferences', newSettings.enableCodeReferences);
         }
-        setSettings(newSettings);
-        saveCurrentSettings(newSettings);
       } else if (selectedItem.type === 'select') {
         if (selectedItem.key === 'responseStyle') {
           const styles: ('concise' | 'verbose' | 'balanced')[] = ['concise', 'verbose', 'balanced'];
@@ -108,14 +121,14 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
           const nextIndex = (currentIndex + 1) % styles.length;
           const newSettings = { ...settings, responseStyle: styles[nextIndex] };
           setSettings(newSettings);
-          saveCurrentSettings(newSettings);
+          await saveIndividualSetting('responseStyle', styles[nextIndex]);
         } else if (selectedItem.key === 'securityLevel') {
           const levels: ('low' | 'medium' | 'high')[] = ['low', 'medium', 'high'];
           const currentIndex = levels.indexOf(settings.securityLevel);
           const nextIndex = (currentIndex + 1) % levels.length;
           const newSettings = { ...settings, securityLevel: levels[nextIndex] };
           setSettings(newSettings);
-          saveCurrentSettings(newSettings);
+          await saveIndividualSetting('securityLevel', levels[nextIndex]);
         }
       }
     } else if (key.escape) {

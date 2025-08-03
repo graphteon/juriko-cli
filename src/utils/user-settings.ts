@@ -27,8 +27,8 @@ export interface UserSettings {
   // Response style settings
   responseStyle?: 'concise' | 'verbose' | 'balanced';
   
-  // Beta features (disabled by default)
-  betaFeatures?: {
+  // Feature settings (disabled by default)
+  settings?: {
     enableBatching?: boolean; // Multi-tool batching (BETA)
     enableCodeReferences?: boolean; // Clickable code references (BETA)
   };
@@ -249,7 +249,11 @@ export async function getResponseStyle(): Promise<'concise' | 'verbose' | 'balan
  * Save response style to user settings
  */
 export async function saveResponseStyle(style: 'concise' | 'verbose' | 'balanced'): Promise<void> {
+  // Load existing settings first
+  const existingSettings = await loadUserSettings();
+  
   const settings: UserSettings = {
+    ...existingSettings,
     responseStyle: style,
   };
   
@@ -260,11 +264,11 @@ export async function saveResponseStyle(style: 'concise' | 'verbose' | 'balanced
  * Get beta features settings with environment variable overrides
  */
 export async function getBetaFeatures(): Promise<{ enableBatching: boolean; enableCodeReferences: boolean }> {
-  const settings = await loadUserSettings();
+  const userSettings = await loadUserSettings();
   
   // Default beta features to disabled
-  let enableBatching = settings.betaFeatures?.enableBatching ?? false;
-  let enableCodeReferences = settings.betaFeatures?.enableCodeReferences ?? false;
+  let enableBatching = userSettings.settings?.enableBatching ?? false;
+  let enableCodeReferences = userSettings.settings?.enableCodeReferences ?? false;
   
   // Environment variable overrides
   const envBatching = process.env.JURIKO_ENABLE_BATCHING?.toLowerCase();
@@ -288,14 +292,18 @@ export async function getBetaFeatures(): Promise<{ enableBatching: boolean; enab
  * Save beta features settings
  */
 export async function saveBetaFeatures(enableBatching: boolean, enableCodeReferences: boolean): Promise<void> {
-  const settings: UserSettings = {
-    betaFeatures: {
+  // Load existing settings first
+  const existingSettings = await loadUserSettings();
+  
+  const settingsToSave: UserSettings = {
+    ...existingSettings,
+    settings: {
       enableBatching,
       enableCodeReferences,
     },
   };
   
-  await saveUserSettings(settings);
+  await saveUserSettings(settingsToSave);
 }
 
 /**
@@ -317,7 +325,11 @@ export async function getSecurityLevel(): Promise<'low' | 'medium' | 'high'> {
  * Save security level to user settings
  */
 export async function saveSecurityLevel(level: 'low' | 'medium' | 'high'): Promise<void> {
+  // Load existing settings first
+  const existingSettings = await loadUserSettings();
+  
   const settings: UserSettings = {
+    ...existingSettings,
     securityLevel: level,
   };
   
@@ -356,7 +368,7 @@ export async function getEffectiveSettings(): Promise<{
 export async function resetAllSettings(): Promise<void> {
   const defaultSettings: UserSettings = {
     responseStyle: 'balanced',
-    betaFeatures: {
+    settings: {
       enableBatching: false,
       enableCodeReferences: false,
     },
