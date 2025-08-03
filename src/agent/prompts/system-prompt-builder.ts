@@ -16,6 +16,7 @@ export class SystemPromptBuilder {
     const taskManagementRules = this.getTaskManagementRules();
     const codeConventions = this.getCodeConventions();
     const errorHandling = this.getErrorHandling();
+    const codeReferenceRules = options.enableCodeReferences ? this.getCodeReferenceRules() : '';
     
     return [
       basePrompt,
@@ -25,6 +26,7 @@ export class SystemPromptBuilder {
       taskManagementRules,
       codeConventions,
       errorHandling,
+      codeReferenceRules,
       options.customInstructions ? `\nCUSTOM INSTRUCTIONS:\n${options.customInstructions}\n\nThe above custom instructions should be followed alongside the standard instructions below.` : ''
     ].filter(Boolean).join('\n\n');
   }
@@ -140,6 +142,21 @@ Current working directory: ${workingDirectory}`;
 - Attempt recovery strategies before failing completely
 - If you get blocked, determine if you can adjust your actions in response
 - Maintain good user experience during errors by explaining what went wrong and how to fix it`;
+  }
+
+  private static getCodeReferenceRules(): string {
+    return `CODE REFERENCE SYSTEM:
+- ALL file references MUST use clickable format: [\`filename\`](vscode://file/path) or [\`filename:line\`](vscode://file/path:line)
+- When mentioning files, always make them clickable for easy navigation
+- Include line numbers when referencing specific locations: [\`src/app.ts:42\`](vscode://file/path:42)
+- Tool outputs automatically enhance file references with clickable links
+- Use relative paths for better readability: [\`src/components/Button.tsx\`] instead of full paths
+- Examples:
+  - "Check [\`package.json\`](vscode://file/package.json) for dependencies"
+  - "Error at [\`src/utils/helper.ts:15\`](vscode://file/src/utils/helper.ts:15)"
+  - "Modified [\`README.md\`](vscode://file/README.md) with new instructions"
+- When showing diffs or changes, include clickable references to the modified files
+- For error messages, include clickable links to the problematic files and line numbers`;
   }
 
   static buildConcisePrompt(options: Omit<PromptOptions, 'concise'>): string {

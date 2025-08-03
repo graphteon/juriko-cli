@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2025-08-03
+
+### Added
+- **Code Reference System**: Clickable file references with VSCode integration
+  - `--enable-code-references`: Enable clickable file references (default: enabled)
+  - `--disable-code-references`: Disable clickable file references
+  - `JURIKO_ENABLE_CODE_REFERENCES`: Environment variable to control code references
+- **CodeReferenceManager**: Intelligent file reference detection and link generation
+- **VSCode Integration**: Direct navigation to files and specific line numbers
+- **Automatic Enhancement**: Tool outputs automatically include clickable references
+- **Context Display**: Show code context around referenced lines
+
+### Improved
+- **Tool Responses**: All file references now include clickable links for easy navigation
+- **Error Messages**: Enhanced with clickable references to problematic files and lines
+- **System Prompt**: Added code reference guidelines for consistent link formatting
+- **Developer Experience**: Seamless navigation between terminal and editor
+
+### Technical Details
+- New files: `src/tools/code-reference.ts`, `test/code-reference-test.js`
+- Enhanced files: `src/tools/text-editor.ts`, `src/agent/prompts/system-prompt-builder.ts`
+- VSCode URL scheme integration for direct file navigation
+- Comprehensive reference parsing and validation system
+
 ## [0.3.1] - 2025-08-03
 
 ### Added

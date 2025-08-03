@@ -235,6 +235,35 @@ export JURIKO_ENABLE_BATCHING=true  # or 'false'
 - Bash commands run sequentially to prevent conflicts
 - Network and compute tools are intelligently batched based on dependencies
 
+### Code Reference System
+
+Enhanced file navigation with clickable references inspired by Claude Code patterns:
+
+```bash
+# Enable code references (enabled by default)
+juriko --enable-code-references
+
+# Disable code references
+juriko --disable-code-references
+```
+
+Or via environment variable:
+```bash
+export JURIKO_ENABLE_CODE_REFERENCES=true  # or 'false'
+```
+
+**Features:**
+- **Clickable file references**: All file mentions become clickable links
+- **Line-specific navigation**: Jump directly to specific lines in files
+- **VSCode integration**: Links open directly in VSCode editor
+- **Automatic enhancement**: Tool outputs automatically include clickable references
+- **Context awareness**: Shows code context around referenced lines
+
+**Examples:**
+- File reference: [`package.json`](vscode://file/package.json)
+- Line reference: [`src/index.ts:42`](vscode://file/src/index.ts:42)
+- Error reference: [`src/utils/helper.ts:15`](vscode://file/src/utils/helper.ts:15)
+
 ### First Run Experience
 
 On your first run, JURIKO will guide you through:
