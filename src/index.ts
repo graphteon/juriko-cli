@@ -75,6 +75,8 @@ program
   .option("--security-level <level>", "set security validation level (low|medium|high)", "medium")
   .option("--enable-batching", "enable parallel execution of independent tools")
   .option("--disable-batching", "disable parallel execution (use sequential execution)")
+  .option("--enable-code-references", "enable clickable file references with VSCode integration")
+  .option("--disable-code-references", "disable clickable file references")
   .action((options) => {
     if (options.directory) {
       try {
@@ -111,6 +113,13 @@ program
         process.env.JURIKO_ENABLE_BATCHING = 'true';
       } else if (options.disableBatching) {
         process.env.JURIKO_ENABLE_BATCHING = 'false';
+      }
+
+      // Set code reference options
+      if (options.enableCodeReferences) {
+        process.env.JURIKO_ENABLE_CODE_REFERENCES = 'true';
+      } else if (options.disableCodeReferences) {
+        process.env.JURIKO_ENABLE_CODE_REFERENCES = 'false';
       }
 
       logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");

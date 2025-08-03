@@ -244,8 +244,8 @@ export class MultiLLMAgent extends EventEmitter {
       securityLevel: this.getSecurityLevelFromEnv(),
       customInstructions,
       workingDirectory: process.cwd(),
-      enableCodeReferences: true,
-      enableBatching: true
+      enableCodeReferences: this.getCodeReferencesEnabledFromEnv(),
+      enableBatching: this.enableBatching
     };
 
     const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
@@ -283,6 +283,11 @@ export class MultiLLMAgent extends EventEmitter {
     return enabled === 'true' || enabled === '1';
   }
 
+  private getCodeReferencesEnabledFromEnv(): boolean {
+    const enabled = process.env.JURIKO_ENABLE_CODE_REFERENCES?.toLowerCase();
+    return enabled !== 'false' && enabled !== '0'; // Default to true unless explicitly disabled
+  }
+
   setResponseStyle(style: ResponseStyle): void {
     this.responseStyle = style;
     // Rebuild system prompt with new style
@@ -300,8 +305,8 @@ export class MultiLLMAgent extends EventEmitter {
       securityLevel: this.getSecurityLevelFromEnv(),
       customInstructions,
       workingDirectory: process.cwd(),
-      enableCodeReferences: true,
-      enableBatching: true
+      enableCodeReferences: this.getCodeReferencesEnabledFromEnv(),
+      enableBatching: this.enableBatching
     };
 
     const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
