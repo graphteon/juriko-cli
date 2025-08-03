@@ -8,6 +8,7 @@ import { ConfirmationService, ConfirmationOptions } from '../../utils/confirmati
 import ConfirmationDialog from './confirmation-dialog';
 import { SettingsMenu } from './settings-menu';
 import { logger } from '../../utils/logger';
+import { MarkdownRenderer } from '../utils/markdown-renderer';
 
 interface StreamingChatProps {
   agent: MultiLLMAgent;
@@ -396,7 +397,7 @@ The chat history is automatically saved and will persist between sessions.`,
           <Box key={index} flexDirection="column" marginBottom={1}>
             {message.content && (
               <Box marginLeft={2}>
-                <Text>{message.content}</Text>
+                <MarkdownRenderer content={message.content} />
                 {message.isStreaming && <Text color="white">█</Text>}
               </Box>
             )}
