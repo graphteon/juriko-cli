@@ -88,6 +88,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Manual condensing tool (`condense_conversation`) with user confirmation
   - Model-specific token limit detection for all supported providers
   - Structured summaries including previous conversation, current work, technical concepts, and pending tasks
+
+## [0.3.3] - 2025-08-04
+
+### Added
+- **System Prompt Overhaul**: Dynamic system prompt generation with context awareness
+  - `SystemPromptBuilder`: Modular system prompt construction
+  - `ResponseFormatter`: Intelligent response formatting with concise/verbose modes
+  - CLI Integration: `--concise`, `--verbose`, `--balanced` response style options
+  - Performance: Improved prompt efficiency and response quality
+- **Multi-Tool Batching System**: Parallel execution of independent tools
+  - `BatchToolExecutor`: Parallel execution engine for independent tools
+  - Dependency Detection: Smart analysis of tool dependencies
+  - Performance Boost: Up to 60% faster execution for multi-tool operations
+  - CLI Flag: `--enable-batching` for beta feature control
+- **Code Reference System**: Automatic file reference detection and linking
+  - `CodeReferenceManager`: Automatic file reference detection and linking
+  - VSCode Integration: Clickable file links with line numbers
+  - Markdown Enhancement: Enhanced code blocks with reference links
+  - CLI Flag: `--enable-code-references` for beta feature control
+- **User Configuration System**: Persistent user settings management
+  - Persistent Settings: `~/.juriko/user-settings.json` for user preferences
+  - Settings Management: CLI commands (`juriko config show/set/reset`, `juriko settings`)
+  - Merge Protection: Fixed critical bug preventing data loss during setting updates
+  - Environment Overrides: Support for environment variable configuration
+- **Security Enhancement Framework**: Comprehensive security validation and control
+  - `SecurityManager`: Comprehensive security validation and control layer
+  - Multi-Level Security: Low/Medium/High security levels
+  - File Access Control: Path validation, extension filtering, size limits
+  - Input Sanitization: XSS and injection protection
+
+### Improved
+- **Architecture**: Modular design with clean separation of concerns
+- **Type Safety**: Enhanced TypeScript interfaces and type definitions
+- **Error Handling**: Robust error handling with user-friendly messages
+- **Performance**: Optimized tool execution and response processing
+- **User Experience**: Interactive menus with keyboard navigation
+- **Developer Experience**: Better code navigation and reference system
+
+### Technical Details
+- New files: `src/agent/prompts/system-prompt-builder.ts`, `src/tools/batch-executor.ts`, `src/tools/code-reference.ts`, `src/ui/components/settings-menu.tsx`, `src/utils/response-formatter.ts`, `src/utils/user-settings.ts`, `src/security/security-manager.ts`, `src/security/security-wrapper.ts`
+- Updated files: `src/index.ts`, `src/agent/multi-llm-agent.ts`, `src/ui/components/streaming-chat.tsx`, `src/types/index.ts`, `README.md`
+- Documentation: `docs/RESPONSE_STYLE_FEATURE.md`, `docs/CODE_REFERENCE_FEATURE.md`
   - Seamless integration with existing conversation flow
   - Clear user feedback during automatic and manual condensing operations
   - Comprehensive documentation in `docs/CONDENSE_FEATURE.md`
