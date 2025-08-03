@@ -13,6 +13,10 @@ import {
   CondenseResponse
 } from "../utils/condense";
 import { parseToolCallArguments, validateArgumentTypes } from "../utils/argument-parser";
+import { SystemPromptBuilder, PromptOptions } from "./prompts/system-prompt-builder";
+import { ResponseFormatter, ResponseStyle } from "../utils/response-formatter";
+import { BatchToolExecutor, BatchResult } from "../tools/batch-executor";
+import { getEffectiveSettings } from "../utils/user-settings";
 
 export interface ChatEntry {
   type: "user" | "assistant" | "tool_result" | "tool_call";
@@ -203,6 +207,9 @@ export class MultiLLMAgent extends EventEmitter {
   private tokenCounter: TokenCounter;
   private abortController: AbortController | null = null;
   private llmConfig: LLMConfig;
+  private responseStyle: ResponseStyle;
+  private batchExecutor: BatchToolExecutor;
+  private enableBatching: boolean;
 
   constructor(llmClient: LLMClient, llmConfig?: LLMConfig) {
     super();
@@ -219,81 +226,186 @@ export class MultiLLMAgent extends EventEmitter {
     // Initialize token counter with the current model for accurate counting
     this.tokenCounter = createTokenCounter(this.llmClient.getCurrentModel());
 
+    // Initialize batch executor
+    this.batchExecutor = new BatchToolExecutor();
+
     // Initialize MCP system (async, but don't block constructor)
     this.initializeMCP().catch(error => {
       console.warn('Failed to initialize MCP system:', error.message);
     });
 
-    // Load custom instructions
-    const customInstructions = loadCustomInstructions();
-    const customInstructionsSection = customInstructions
-      ? `\n\nCUSTOM INSTRUCTIONS:\n${customInstructions}\n\nThe above custom instructions should be followed alongside the standard instructions below.`
-      : "";
+    // Initialize settings and build system prompt (async)
+    this.initializeSettings();
+  }
 
-    // Initialize with system message
-    this.messages.push({
-      role: "system",
-      content: `You are JURIKO CLI, an AI assistant that helps with file editing, coding tasks, and system operations.${customInstructionsSection}
+  private async initializeSettings(): Promise<void> {
+    try {
+      // Get effective settings (user config + env overrides)
+      const settings = await getEffectiveSettings();
+      
+      // Initialize response style
+      this.responseStyle = this.createResponseStyleFromSettings(settings.responseStyle);
+      
+      // Initialize batching
+      this.enableBatching = settings.enableBatching;
 
-You have access to these tools:
-- view_file: View file contents or directory listings
-- create_file: Create new files with content (ONLY use this for files that don't exist yet)
-- str_replace_editor: Replace text in existing files (ALWAYS use this to edit or update existing files)
-- bash: Execute bash commands (use for searching, file discovery, navigation, and system operations)
-- create_todo_list: Create a visual todo list for planning and tracking tasks
-- update_todo_list: Update existing todos in your todo list
-- condense_conversation: Condense the conversation to reduce token usage while preserving important context
+      // Build system prompt using settings
+      const customInstructions = loadCustomInstructions();
+      const promptOptions: PromptOptions = {
+        concise: this.responseStyle.concise,
+        securityLevel: settings.securityLevel,
+        customInstructions,
+        workingDirectory: process.cwd(),
+        enableCodeReferences: settings.enableCodeReferences,
+        enableBatching: settings.enableBatching
+      };
 
-TOKEN MANAGEMENT:
-The system automatically monitors token usage and will condense conversations when approaching 75% of the model's token limit. This helps maintain context while staying within limits. You can also manually trigger condensing using the condense_conversation tool.
+      const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
 
-REAL-TIME INFORMATION:
-You have access to real-time web search and X (Twitter) data. When users ask for current information, latest news, or recent events, you automatically have access to up-to-date information from the web and social media.
+      // Initialize with system message
+      this.messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    } catch (error) {
+      console.warn('Failed to load user settings, using defaults:', error);
+      
+      // Fallback to environment variables and defaults
+      this.responseStyle = this.getResponseStyleFromEnv();
+      this.enableBatching = this.getBatchingEnabledFromEnv();
 
-IMPORTANT TOOL USAGE RULES:
-- NEVER use create_file on files that already exist - this will overwrite them completely
-- ALWAYS use str_replace_editor to modify existing files, even for small changes
-- Before editing a file, use view_file to see its current contents
-- Use create_file ONLY when creating entirely new files that don't exist
+      const customInstructions = loadCustomInstructions();
+      const promptOptions: PromptOptions = {
+        concise: this.responseStyle.concise,
+        securityLevel: this.getSecurityLevelFromEnv(),
+        customInstructions,
+        workingDirectory: process.cwd(),
+        enableCodeReferences: this.getCodeReferencesEnabledFromEnv(),
+        enableBatching: this.enableBatching
+      };
 
-SEARCHING AND EXPLORATION:
-- Use bash with commands like 'find', 'grep', 'rg' (ripgrep), 'ls', etc. for searching files and content
-- Examples: 'find . -name "*.js"', 'grep -r "function" src/', 'rg "import.*react"'
-- Use bash for directory navigation, file discovery, and content searching
-- view_file is best for reading specific files you already know exist
+      const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
 
-When a user asks you to edit, update, modify, or change an existing file:
-1. First use view_file to see the current contents
-2. Then use str_replace_editor to make the specific changes
-3. Never use create_file for existing files
+      this.messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+  }
 
-When a user asks you to create a new file that doesn't exist:
-1. Use create_file with the full content
+  private createResponseStyleFromSettings(style: 'concise' | 'verbose' | 'balanced'): ResponseStyle {
+    switch (style) {
+      case 'concise':
+        return ResponseFormatter.createConciseStyle();
+      case 'verbose':
+        return ResponseFormatter.createVerboseStyle();
+      default:
+        return ResponseFormatter.createBalancedStyle();
+    }
+  }
 
-TASK PLANNING WITH TODO LISTS:
-- For complex requests with multiple steps, ALWAYS create a todo list first to plan your approach
-- Use create_todo_list to break down tasks into manageable items with priorities
-- Mark tasks as 'in_progress' when you start working on them (only one at a time)
-- Mark tasks as 'completed' immediately when finished
-- Use update_todo_list to track your progress throughout the task
-- Todo lists provide visual feedback with colors: ✅ Green (completed), 🔄 Cyan (in progress), ⏳ Yellow (pending)
-- Always create todos with priorities: 'high' (🔴), 'medium' (🟡), 'low' (🟢)
+  private getResponseStyleFromEnv(): ResponseStyle {
+    const styleEnv = process.env.JURIKO_RESPONSE_STYLE;
+    
+    switch (styleEnv) {
+      case 'concise':
+        return ResponseFormatter.createConciseStyle();
+      case 'verbose':
+        return ResponseFormatter.createVerboseStyle();
+      default:
+        return ResponseFormatter.createBalancedStyle();
+    }
+  }
 
-USER CONFIRMATION SYSTEM:
-File operations (create_file, str_replace_editor) and bash commands will automatically request user confirmation before execution. The confirmation system will show users the actual content or command before they decide. Users can choose to approve individual operations or approve all operations of that type for the session.
+  private getSecurityLevelFromEnv(): 'low' | 'medium' | 'high' {
+    const level = process.env.JURIKO_SECURITY_LEVEL;
+    if (level === 'low' || level === 'medium' || level === 'high') {
+      return level;
+    }
+    return 'medium'; // Default
+  }
 
-If a user rejects an operation, the tool will return an error and you should not proceed with that specific operation.
+  private getBatchingEnabledFromEnv(): boolean {
+    const enabled = process.env.JURIKO_ENABLE_BATCHING?.toLowerCase();
+    return enabled === 'true' || enabled === '1';
+  }
 
-Be helpful, direct, and efficient. Always explain what you're doing and show the results.
+  private getCodeReferencesEnabledFromEnv(): boolean {
+    const enabled = process.env.JURIKO_ENABLE_CODE_REFERENCES?.toLowerCase();
+    return enabled !== 'false' && enabled !== '0'; // Default to true unless explicitly disabled
+  }
 
-IMPORTANT RESPONSE GUIDELINES:
-- After using tools, do NOT respond with pleasantries like "Thanks for..." or "Great!"
-- Only provide necessary explanations or next steps if relevant to the task
-- Keep responses concise and focused on the actual work being done
-- If a tool execution completes the user's request, you can remain silent or give a brief confirmation
-
-Current working directory: ${process.cwd()}`,
+  setResponseStyle(style: ResponseStyle): void {
+    this.responseStyle = style;
+    // Rebuild system prompt with new style
+    this.rebuildSystemPrompt().catch(error => {
+      console.warn('Failed to rebuild system prompt:', error);
     });
+  }
+
+  getResponseStyle(): ResponseStyle {
+    return { ...this.responseStyle };
+  }
+
+  private async rebuildSystemPrompt(): Promise<void> {
+    try {
+      // Get current effective settings
+      const settings = await getEffectiveSettings();
+      
+      // Update response style
+      this.responseStyle = this.createResponseStyleFromSettings(settings.responseStyle);
+      
+      // Update batching
+      this.enableBatching = settings.enableBatching;
+
+      const customInstructions = loadCustomInstructions();
+      const promptOptions: PromptOptions = {
+        concise: this.responseStyle.concise,
+        securityLevel: settings.securityLevel,
+        customInstructions,
+        workingDirectory: process.cwd(),
+        enableCodeReferences: settings.enableCodeReferences,
+        enableBatching: settings.enableBatching
+      };
+
+      const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
+
+      // Update the system message
+      const systemMessageIndex = this.messages.findIndex(m => m.role === 'system');
+      if (systemMessageIndex !== -1) {
+        this.messages[systemMessageIndex] = {
+          role: "system",
+          content: systemPrompt,
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to rebuild system prompt with user settings:', error);
+      // Fallback to environment-based rebuild
+      this.rebuildSystemPromptFromEnv();
+    }
+  }
+
+  private rebuildSystemPromptFromEnv(): void {
+    const customInstructions = loadCustomInstructions();
+    const promptOptions: PromptOptions = {
+      concise: this.responseStyle.concise,
+      securityLevel: this.getSecurityLevelFromEnv(),
+      customInstructions,
+      workingDirectory: process.cwd(),
+      enableCodeReferences: this.getCodeReferencesEnabledFromEnv(),
+      enableBatching: this.enableBatching
+    };
+
+    const systemPrompt = SystemPromptBuilder.buildPrompt(promptOptions);
+
+    // Update the system message
+    const systemMessageIndex = this.messages.findIndex(m => m.role === 'system');
+    if (systemMessageIndex !== -1) {
+      this.messages[systemMessageIndex] = {
+        role: "system",
+        content: systemPrompt,
+      };
+    }
   }
 
   private deriveLLMConfigFromClient(): LLMConfig {
@@ -409,30 +521,97 @@ Current working directory: ${process.cwd()}`,
             tool_calls: assistantMessage.tool_calls,
           });
 
-          // Execute tool calls
-          for (const toolCall of assistantMessage.tool_calls) {
-            const result = await this.executeTool(toolCall);
+          // Execute tool calls with batching if enabled
+          if (this.enableBatching && assistantMessage.tool_calls.length > 1) {
+            try {
+              const batchResponse = await this.batchExecutor.executeBatch(
+                assistantMessage.tool_calls,
+                (toolCall) => this.executeTool(toolCall)
+              );
+              
+              // Process batch results
+              for (let i = 0; i < assistantMessage.tool_calls.length; i++) {
+                const toolCall = assistantMessage.tool_calls[i];
+                const batchResult = batchResponse.results[i];
+                const result = batchResult.success
+                  ? { success: true, output: batchResult.output }
+                  : { success: false, error: batchResult.error };
 
-            const toolResultEntry: ChatEntry = {
-              type: "tool_result",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error occurred",
-              timestamp: new Date(),
-              toolCall: toolCall,
-              toolResult: result,
-            };
-            this.chatHistory.push(toolResultEntry);
-            newEntries.push(toolResultEntry);
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+                newEntries.push(toolResultEntry);
 
-            // Add tool result to messages with proper format (needed for AI context)
-            this.messages.push({
-              role: "tool",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error",
-              tool_call_id: toolCall.id,
-            });
+                // Add tool result to messages with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
+            } catch (error) {
+              console.error('Batch execution failed, falling back to sequential:', error);
+              // Fall back to sequential execution
+              for (const toolCall of assistantMessage.tool_calls) {
+                const result = await this.executeTool(toolCall);
+
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+                newEntries.push(toolResultEntry);
+
+                // Add tool result to messages with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
+            }
+          } else {
+            // Execute tool calls sequentially
+            for (const toolCall of assistantMessage.tool_calls) {
+              const result = await this.executeTool(toolCall);
+
+              const toolResultEntry: ChatEntry = {
+                type: "tool_result",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error occurred",
+                timestamp: new Date(),
+                toolCall: toolCall,
+                toolResult: result,
+              };
+              this.chatHistory.push(toolResultEntry);
+              newEntries.push(toolResultEntry);
+
+              // Add tool result to messages with proper format (needed for AI context)
+              this.messages.push({
+                role: "tool",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error",
+                tool_call_id: toolCall.id,
+              });
+            }
           }
 
           // Get next response - this might contain more tool calls
@@ -744,45 +923,142 @@ Current working directory: ${process.cwd()}`,
             }
           }
 
-          // Execute tools
-          for (const toolCall of accumulatedMessage.tool_calls) {
-            // Check for cancellation before executing each tool
-            if (this.abortController?.signal.aborted) {
-              yield {
-                type: "content",
-                content: "\n\n[Operation cancelled by user]",
-              };
-              yield { type: "done" };
-              return;
+          // Execute tools with batching if enabled
+          if (this.enableBatching && accumulatedMessage.tool_calls.length > 1) {
+            try {
+              const batchResponse = await this.batchExecutor.executeBatch(
+                accumulatedMessage.tool_calls,
+                (toolCall) => this.executeTool(toolCall)
+              );
+              
+              // Process batch results
+              for (let i = 0; i < accumulatedMessage.tool_calls.length; i++) {
+                // Check for cancellation before processing each result
+                if (this.abortController?.signal.aborted) {
+                  yield {
+                    type: "content",
+                    content: "\n\n[Operation cancelled by user]",
+                  };
+                  yield { type: "done" };
+                  return;
+                }
+
+                const toolCall = accumulatedMessage.tool_calls[i];
+                const batchResult = batchResponse.results[i];
+                const result = batchResult.success
+                  ? { success: true, output: batchResult.output }
+                  : { success: false, error: batchResult.error };
+
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+
+                yield {
+                  type: "tool_result",
+                  toolCall,
+                  toolResult: result,
+                };
+
+                // Add tool result with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
+            } catch (error) {
+              console.error('Batch execution failed, falling back to sequential:', error);
+              // Fall back to sequential execution
+              for (const toolCall of accumulatedMessage.tool_calls) {
+                // Check for cancellation before executing each tool
+                if (this.abortController?.signal.aborted) {
+                  yield {
+                    type: "content",
+                    content: "\n\n[Operation cancelled by user]",
+                  };
+                  yield { type: "done" };
+                  return;
+                }
+
+                const result = await this.executeTool(toolCall);
+
+                const toolResultEntry: ChatEntry = {
+                  type: "tool_result",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error occurred",
+                  timestamp: new Date(),
+                  toolCall: toolCall,
+                  toolResult: result,
+                };
+                this.chatHistory.push(toolResultEntry);
+
+                yield {
+                  type: "tool_result",
+                  toolCall,
+                  toolResult: result,
+                };
+
+                // Add tool result with proper format (needed for AI context)
+                this.messages.push({
+                  role: "tool",
+                  content: result.success
+                    ? result.output || "Success"
+                    : result.error || "Error",
+                  tool_call_id: toolCall.id,
+                });
+              }
             }
+          } else {
+            // Execute tools sequentially
+            for (const toolCall of accumulatedMessage.tool_calls) {
+              // Check for cancellation before executing each tool
+              if (this.abortController?.signal.aborted) {
+                yield {
+                  type: "content",
+                  content: "\n\n[Operation cancelled by user]",
+                };
+                yield { type: "done" };
+                return;
+              }
 
-            const result = await this.executeTool(toolCall);
+              const result = await this.executeTool(toolCall);
 
-            const toolResultEntry: ChatEntry = {
-              type: "tool_result",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error occurred",
-              timestamp: new Date(),
-              toolCall: toolCall,
-              toolResult: result,
-            };
-            this.chatHistory.push(toolResultEntry);
+              const toolResultEntry: ChatEntry = {
+                type: "tool_result",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error occurred",
+                timestamp: new Date(),
+                toolCall: toolCall,
+                toolResult: result,
+              };
+              this.chatHistory.push(toolResultEntry);
 
-            yield {
-              type: "tool_result",
-              toolCall,
-              toolResult: result,
-            };
+              yield {
+                type: "tool_result",
+                toolCall,
+                toolResult: result,
+              };
 
-            // Add tool result with proper format (needed for AI context)
-            this.messages.push({
-              role: "tool",
-              content: result.success
-                ? result.output || "Success"
-                : result.error || "Error",
-              tool_call_id: toolCall.id,
-            });
+              // Add tool result with proper format (needed for AI context)
+              this.messages.push({
+                role: "tool",
+                content: result.success
+                  ? result.output || "Success"
+                  : result.error || "Error",
+                tool_call_id: toolCall.id,
+              });
+            }
           }
 
           // Update token count after adding tool results and check for condensing

@@ -2,10 +2,16 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import { ToolResult, EditorCommand } from "../types";
 import { ConfirmationService } from "../utils/confirmation-service";
+import { CodeReferenceManager, ReferenceUtils } from "./code-reference";
 
 export class TextEditorTool {
   private editHistory: EditorCommand[] = [];
   private confirmationService = ConfirmationService.getInstance();
+
+  constructor() {
+    // Set working directory for code references
+    CodeReferenceManager.setWorkingDirectory(process.cwd());
+  }
 
   async view(
     filePath: string,
@@ -19,9 +25,14 @@ export class TextEditorTool {
 
         if (stats.isDirectory()) {
           const files = await fs.readdir(resolvedPath);
+          const fileList = files.map(file => {
+            const fullPath = path.join(filePath, file);
+            return ReferenceUtils.file(fullPath);
+          }).join("\n");
+          
           return {
             success: true,
-            output: `Directory contents of ${filePath}:\n${files.join("\n")}`,
+            output: `Directory contents of ${ReferenceUtils.file(filePath)}:\n${fileList}`,
           };
         }
 
@@ -37,7 +48,7 @@ export class TextEditorTool {
 
           return {
             success: true,
-            output: `Lines ${start}-${end} of ${filePath}:\n${numberedLines}`,
+            output: `Lines ${start}-${end} of ${ReferenceUtils.file(filePath)}:\n${numberedLines}`,
           };
         }
 
@@ -49,9 +60,14 @@ export class TextEditorTool {
         const additionalLinesMessage =
           totalLines > 10 ? `\n... +${totalLines - 10} lines` : "";
 
+        const fileRef = ReferenceUtils.file(filePath);
+        const enhancedOutput = CodeReferenceManager.enhanceWithReferences(
+          `Contents of ${fileRef}:\n${numberedLines}${additionalLinesMessage}`
+        );
+        
         return {
           success: true,
-          output: `Contents of ${filePath}:\n${numberedLines}${additionalLinesMessage}`,
+          output: enhancedOutput,
         };
       } else {
         return {
@@ -129,14 +145,15 @@ export class TextEditorTool {
         new_str: newStr,
       });
 
-      // Generate diff output
+      // Generate diff output with clickable references
       const oldLines = content.split("\n");
       const newLines = newContent.split("\n");
       const diff = this.generateDiff(oldLines, newLines, filePath);
+      const enhancedDiff = CodeReferenceManager.enhanceWithReferences(diff);
 
       return {
         success: true,
-        output: diff,
+        output: enhancedDiff,
       };
     } catch (error: any) {
       return {
@@ -197,10 +214,11 @@ export class TextEditorTool {
       const oldLines: string[] = []; // Empty for new files
       const newLines = content.split("\n");
       const diff = this.generateDiff(oldLines, newLines, filePath);
+      const enhancedDiff = CodeReferenceManager.enhanceWithReferences(diff);
 
       return {
         success: true,
-        output: diff,
+        output: enhancedDiff,
       };
     } catch (error: any) {
       return {
@@ -240,9 +258,10 @@ export class TextEditorTool {
         content,
       });
 
+      const fileRef = ReferenceUtils.line(filePath, insertLine);
       return {
         success: true,
-        output: `Successfully inserted content at line ${insertLine} in ${filePath}`,
+        output: `Successfully inserted content at ${fileRef}`,
       };
     } catch (error: any) {
       return {
@@ -335,7 +354,8 @@ export class TextEditorTool {
       }
     }
 
-    let summary = `Updated ${filePath}`;
+    const fileRef = ReferenceUtils.file(filePath);
+    let summary = `Updated ${fileRef}`;
     if (addedLines > 0 && removedLines > 0) {
       summary += ` with ${addedLines} addition${
         addedLines !== 1 ? "s" : ""
