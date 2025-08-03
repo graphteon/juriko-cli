@@ -6,7 +6,7 @@ import {
   saveBetaFeatures, 
   saveSecurityLevel,
   resetAllSettings 
-} from '../../utils/user-settings.js';
+} from '../../utils/user-settings';
 
 interface SettingsMenuProps {
   onClose: () => void;
