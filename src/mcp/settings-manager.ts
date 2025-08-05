@@ -10,12 +10,12 @@ export class MCPSettingsManager {
 
   constructor() {
     const homeDir = os.homedir();
-    const jurikoDir = path.join(homeDir, '.juriko');
-    this.settingsPath = path.join(jurikoDir, 'mcp-settings.json');
-    
-    // Ensure .juriko directory exists
-    if (!fs.existsSync(jurikoDir)) {
-      fs.mkdirSync(jurikoDir, { recursive: true });
+    const kilocodeDir = path.join(homeDir, '.kilocode');
+    this.settingsPath = path.join(kilocodeDir, 'mcp-settings.json');
+
+    // Ensure .kilocode directory exists
+    if (!fs.existsSync(kilocodeDir)) {
+      fs.mkdirSync(kilocodeDir, { recursive: true });
     }
   }
 

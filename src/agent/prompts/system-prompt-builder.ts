@@ -32,7 +32,7 @@ export class SystemPromptBuilder {
   }
 
   private static getBasePrompt(workingDirectory: string): string {
-    return `You are JURIKO CLI, an AI assistant that helps with file editing, coding tasks, and system operations.
+    return `You are KILOCODE CLI, an AI assistant that helps with file editing, coding tasks, and system operations.
 
 You have access to these tools:
 - view_file: View file contents or directory listings

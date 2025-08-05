@@ -1,10 +1,10 @@
 {
-  "name": "@graphteon/juriko-cli",
+  "name": "@biznetgio/kilocode-cli",
   "version": "0.3.3",
-  "description": "JURIKO - An open-source AI agent that brings the power of AI directly into your terminal.",
+  "description": "KILOCODE - An open-source AI agent that brings the power of AI directly into your terminal.",
   "main": "dist/index.js",
   "bin": {
-    "juriko": "dist/index.js"
+    "kilocode": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -17,7 +17,7 @@
     "cli",
     "agent",
     "text-editor",
-    "juriko",
+    "kilocode",
     "ai"
   ],
   "author": "anak10thn <anak10thn@gmail.com>",

@@ -37,7 +37,7 @@ export interface UserSettings {
   securityLevel?: 'low' | 'medium' | 'high';
 }
 
-const SETTINGS_DIR = path.join(os.homedir(), '.juriko');
+const SETTINGS_DIR = path.join(os.homedir(), '.kilocode');
 const SETTINGS_FILE = path.join(SETTINGS_DIR, 'user-settings.json');
 
 export async function ensureSettingsDirectory(): Promise<void> {
@@ -107,13 +107,13 @@ export async function saveApiKey(provider: LLMProvider, apiKey: string): Promise
 export function getApiKeyFromEnv(provider: LLMProvider): string | undefined {
   switch (provider) {
     case 'anthropic':
-      return process.env.ANTHROPIC_API_KEY || process.env.JURIKO_ANTHROPIC_API_KEY;
+      return process.env.ANTHROPIC_API_KEY || process.env.KILOCODE_ANTHROPIC_API_KEY;
     case 'openai':
-      return process.env.OPENAI_API_KEY || process.env.JURIKO_OPENAI_API_KEY;
+      return process.env.OPENAI_API_KEY || process.env.KILOCODE_OPENAI_API_KEY;
     case 'grok':
-      return process.env.GROK_API_KEY || process.env.JURIKO_GROK_API_KEY;
+      return process.env.GROK_API_KEY || process.env.KILOCODE_GROK_API_KEY;
     case 'local':
-      return process.env.LOCAL_LLM_API_KEY || process.env.JURIKO_LOCAL_LLM_API_KEY;
+      return process.env.LOCAL_LLM_API_KEY || process.env.KILOCODE_LOCAL_LLM_API_KEY;
     default:
       return undefined;
   }
@@ -152,13 +152,13 @@ export async function getBaseURLFromSettings(provider: LLMProvider): Promise<str
 export function getBaseURLFromEnv(provider: LLMProvider): string | undefined {
   switch (provider) {
     case 'anthropic':
-      return process.env.ANTHROPIC_BASE_URL || process.env.JURIKO_ANTHROPIC_BASE_URL;
+      return process.env.ANTHROPIC_BASE_URL || process.env.KILOCODE_ANTHROPIC_BASE_URL;
     case 'openai':
-      return process.env.OPENAI_BASE_URL || process.env.JURIKO_OPENAI_BASE_URL;
+      return process.env.OPENAI_BASE_URL || process.env.KILOCODE_OPENAI_BASE_URL;
     case 'grok':
-      return process.env.GROK_BASE_URL || process.env.JURIKO_GROK_BASE_URL;
+      return process.env.GROK_BASE_URL || process.env.KILOCODE_GROK_BASE_URL;
     case 'local':
-      return process.env.LOCAL_LLM_BASE_URL || process.env.JURIKO_LOCAL_LLM_BASE_URL;
+      return process.env.LOCAL_LLM_BASE_URL || process.env.KILOCODE_LOCAL_LLM_BASE_URL;
     default:
       return undefined;
   }
@@ -214,11 +214,11 @@ export async function saveCondenseThreshold(threshold: number): Promise<void> {
 
 /**
  * Get condense threshold from environment variable or user settings
- * Environment variable: JURIKO_CONDENSE_THRESHOLD (0-100)
+ * Environment variable: KILOCODE_CONDENSE_THRESHOLD (0-100)
  */
 export async function getCondenseThresholdWithEnv(): Promise<number> {
   // First try environment variable
-  const envThreshold = process.env.JURIKO_CONDENSE_THRESHOLD;
+  const envThreshold = process.env.KILOCODE_CONDENSE_THRESHOLD;
   if (envThreshold) {
     const parsed = parseInt(envThreshold, 10);
     if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
@@ -235,7 +235,7 @@ export async function getCondenseThresholdWithEnv(): Promise<number> {
  */
 export async function getResponseStyle(): Promise<'concise' | 'verbose' | 'balanced'> {
   // First try environment variable
-  const envStyle = process.env.JURIKO_RESPONSE_STYLE;
+  const envStyle = process.env.KILOCODE_RESPONSE_STYLE;
   if (envStyle === 'concise' || envStyle === 'verbose' || envStyle === 'balanced') {
     return envStyle;
   }
@@ -271,14 +271,14 @@ export async function getBetaFeatures(): Promise<{ enableBatching: boolean; enab
   let enableCodeReferences = userSettings.settings?.enableCodeReferences ?? false;
   
   // Environment variable overrides
-  const envBatching = process.env.JURIKO_ENABLE_BATCHING?.toLowerCase();
+  const envBatching = process.env.KILOCODE_ENABLE_BATCHING?.toLowerCase();
   if (envBatching === 'true' || envBatching === '1') {
     enableBatching = true;
   } else if (envBatching === 'false' || envBatching === '0') {
     enableBatching = false;
   }
   
-  const envCodeReferences = process.env.JURIKO_ENABLE_CODE_REFERENCES?.toLowerCase();
+  const envCodeReferences = process.env.KILOCODE_ENABLE_CODE_REFERENCES?.toLowerCase();
   if (envCodeReferences === 'true' || envCodeReferences === '1') {
     enableCodeReferences = true;
   } else if (envCodeReferences === 'false' || envCodeReferences === '0') {
@@ -311,7 +311,7 @@ export async function saveBetaFeatures(enableBatching: boolean, enableCodeRefere
  */
 export async function getSecurityLevel(): Promise<'low' | 'medium' | 'high'> {
   // First try environment variable
-  const envLevel = process.env.JURIKO_SECURITY_LEVEL;
+  const envLevel = process.env.KILOCODE_SECURITY_LEVEL;
   if (envLevel === 'low' || envLevel === 'medium' || envLevel === 'high') {
     return envLevel;
   }

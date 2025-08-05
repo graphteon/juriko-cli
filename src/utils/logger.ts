@@ -181,7 +181,7 @@ export const logger = Logger.getInstance({
   level: getLogLevelFromEnv(),
   enableColors: true,
   enableTimestamp: true,
-  prefix: 'JURIKO',
+  prefix: 'KILOCODE',
 });
 
 // Export convenience functions

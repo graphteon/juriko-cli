@@ -1,6 +1,6 @@
-import { JurikoTool } from "./client";
+import { KilocodeTool } from "./client";
 
-export const JURIKO_TOOLS: JurikoTool[] = [
+export const KILOCODE_TOOLS: KilocodeTool[] = [
   {
     type: "function",
     function: {

@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat";
 
-export type JurikoMessage = ChatCompletionMessageParam;
+export type KilocodeMessage = ChatCompletionMessageParam;
 
-export interface JurikoTool {
+export interface KilocodeTool {
   type: "function";
   function: {
     name: string;
@@ -16,7 +16,7 @@ export interface JurikoTool {
   };
 }
 
-export interface JurikoToolCall {
+export interface KilocodeToolCall {
   id: string;
   type: "function";
   function: {
@@ -34,25 +34,25 @@ export interface SearchOptions {
   search_parameters?: SearchParameters;
 }
 
-export interface JurikoResponse {
+export interface KilocodeResponse {
   choices: Array<{
     message: {
       role: string;
       content: string | null;
-      tool_calls?: JurikoToolCall[];
+      tool_calls?: KilocodeToolCall[];
     };
     finish_reason: string;
   }>;
 }
 
-export class JurikoClient {
+export class KilocodeClient {
   private client: OpenAI;
   private currentModel: string = "grok-3-latest";
 
   constructor(apiKey: string, model?: string, baseURL?: string) {
     this.client = new OpenAI({
       apiKey,
-      baseURL: baseURL || process.env.JURIKO_BASE_URL || "https://api.x.ai/v1",
+      baseURL: baseURL || process.env.KILOCODE_BASE_URL || "https://api.x.ai/v1",
       timeout: 360000,
     });
     if (model) {
@@ -69,11 +69,11 @@ export class JurikoClient {
   }
 
   async chat(
-    messages: JurikoMessage[],
-    tools?: JurikoTool[],
+    messages: KilocodeMessage[],
+    tools?: KilocodeTool[],
     model?: string,
     searchOptions?: SearchOptions
-  ): Promise<JurikoResponse> {
+  ): Promise<KilocodeResponse> {
     try {
       const requestPayload: any = {
         model: model || this.currentModel,
@@ -93,15 +93,15 @@ export class JurikoClient {
         requestPayload
       );
 
-      return response as JurikoResponse;
+      return response as KilocodeResponse;
     } catch (error: any) {
       throw new Error(`AI API error: ${error.message}`);
     }
   }
 
   async *chatStream(
-    messages: JurikoMessage[],
-    tools?: JurikoTool[],
+    messages: KilocodeMessage[],
+    tools?: KilocodeTool[],
     model?: string,
     searchOptions?: SearchOptions
   ): AsyncGenerator<any, void, unknown> {
@@ -136,8 +136,8 @@ export class JurikoClient {
   async search(
     query: string,
     searchParameters?: SearchParameters
-  ): Promise<JurikoResponse> {
-    const searchMessage: JurikoMessage = {
+  ): Promise<KilocodeResponse> {
+    const searchMessage: KilocodeMessage = {
       role: "user",
       content: query,
     };

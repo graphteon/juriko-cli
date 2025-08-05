@@ -1,11 +1,11 @@
-import { JurikoMessage } from "../juriko/client";
+import { KilocodeMessage } from "../juriko/client";
 import { LLMClient } from "../llm/client";
 import { LLMConfig, LLMMessage } from "../llm/types";
 import { TokenCounter } from "./token-counter";
 import { getCondenseThresholdWithEnv } from "./user-settings";
 
 export interface CondenseResponse {
-  messages: JurikoMessage[];
+  messages: KilocodeMessage[];
   summary: string;
   newContextTokens: number;
   error?: string;
@@ -24,7 +24,7 @@ export interface CondenseOptions {
  * Summarizes the conversation so far, as described in the prompt instructions.
  */
 export async function condenseConversation(
-  messages: JurikoMessage[],
+  messages: KilocodeMessage[],
   llmConfig: LLMConfig,
   tokenCounter: TokenCounter,
   prevContextTokens: number,
@@ -33,7 +33,7 @@ export async function condenseConversation(
   const {
     maxMessagesToKeep = 3,
     customCondensePrompt,
-    systemPrompt = "You are JURIKO CLI, an AI assistant that helps with file editing, coding tasks, and system operations.",
+    systemPrompt = "You are KILOCODE CLI, an AI assistant that helps with file editing, coding tasks, and system operations.",
     taskId,
     isAutomaticTrigger = false
   } = options;
@@ -63,7 +63,7 @@ export async function condenseConversation(
     }
 
     // Create the condense prompt
-    const finalRequestMessage: JurikoMessage = {
+    const finalRequestMessage: KilocodeMessage = {
       role: "user",
       content: customCondensePrompt?.trim() || 
         "Summarize the conversation so far, as described in the prompt instructions." +
@@ -147,7 +147,7 @@ export async function condenseConversation(
 
     // Create new condensed message set
     const systemMessage = messages.find(m => m.role === 'system');
-    const condensedMessages: JurikoMessage[] = [];
+    const condensedMessages: KilocodeMessage[] = [];
 
     // Add system message if it exists
     if (systemMessage) {

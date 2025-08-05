@@ -27,13 +27,13 @@ dotenv.config();
 // Load API key from user settings if not in environment
 function loadApiKey(): string | undefined {
   // First check environment variables
-  let apiKey = process.env.JURIKO_API_KEY;
+  let apiKey = process.env.KILOCODE_API_KEY;
   
   if (!apiKey) {
     // Try to load from user settings file
     try {
       const homeDir = os.homedir();
-      const settingsFile = path.join(homeDir, '.juriko', 'user-settings.json');
+      const settingsFile = path.join(homeDir, '.kilocode', 'user-settings.json');
       
       if (fs.existsSync(settingsFile)) {
         const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
@@ -50,13 +50,13 @@ function loadApiKey(): string | undefined {
 // Load base URL from user settings if not in environment
 function loadBaseURL(): string | undefined {
   // First check environment variables
-  let baseURL = process.env.JURIKO_BASE_URL;
+  let baseURL = process.env.KILOCODE_BASE_URL;
   
   if (!baseURL) {
     // Try to load from user settings file
     try {
       const homeDir = os.homedir();
-      const settingsFile = path.join(homeDir, '.juriko', 'user-settings.json');
+      const settingsFile = path.join(homeDir, '.kilocode', 'user-settings.json');
       
       if (fs.existsSync(settingsFile)) {
         const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
@@ -71,14 +71,14 @@ function loadBaseURL(): string | undefined {
 }
 
 program
-  .name("juriko")
+  .name("kilocode")
   .description(
-    "JURIKO - A conversational AI CLI tool with text editor capabilities"
+    "KILOCODE - A conversational AI CLI tool with text editor capabilities"
   )
   .version(packageJson.version)
   .option("-d, --directory <dir>", "set working directory", process.cwd())
-  .option("-k, --api-key <key>", "AI API key (or set JURIKO_API_KEY env var)")
-  .option("-u, --base-url <url>", "AI API base URL (or set JURIKO_BASE_URL env var)")
+  .option("-k, --api-key <key>", "AI API key (or set KILOCODE_API_KEY env var)")
+  .option("-u, --base-url <url>", "AI API base URL (or set KILOCODE_BASE_URL env var)")
   .option("--concise", "enable concise response mode (< 4 lines)")
   .option("--verbose", "enable verbose response mode with explanations")
   .option("--security-level <level>", "set security validation level (low|medium|high)", "medium")
@@ -102,43 +102,43 @@ program
     try {
       // Set API keys from command line options if provided
       if (options.apiKey) {
-        process.env.JURIKO_API_KEY = options.apiKey;
+        process.env.KILOCODE_API_KEY = options.apiKey;
       }
 
       // Set response style options
       if (options.concise) {
-        process.env.JURIKO_RESPONSE_STYLE = 'concise';
+        process.env.KILOCODE_RESPONSE_STYLE = 'concise';
       } else if (options.verbose) {
-        process.env.JURIKO_RESPONSE_STYLE = 'verbose';
+        process.env.KILOCODE_RESPONSE_STYLE = 'verbose';
       }
 
       // Set security level
       if (options.securityLevel) {
-        process.env.JURIKO_SECURITY_LEVEL = options.securityLevel;
+        process.env.KILOCODE_SECURITY_LEVEL = options.securityLevel;
       }
 
       // Set batching options
       if (options.enableBatching) {
-        process.env.JURIKO_ENABLE_BATCHING = 'true';
+        process.env.KILOCODE_ENABLE_BATCHING = 'true';
       } else if (options.disableBatching) {
-        process.env.JURIKO_ENABLE_BATCHING = 'false';
+        process.env.KILOCODE_ENABLE_BATCHING = 'false';
       }
 
       // Set code reference options
       if (options.enableCodeReferences) {
-        process.env.JURIKO_ENABLE_CODE_REFERENCES = 'true';
+        process.env.KILOCODE_ENABLE_CODE_REFERENCES = 'true';
       } else if (options.disableCodeReferences) {
-        process.env.JURIKO_ENABLE_CODE_REFERENCES = 'false';
+        process.env.KILOCODE_ENABLE_CODE_REFERENCES = 'false';
       }
 
-      logger.info("🤖 Starting JURIKO CLI with Multi-LLM Provider Support...\n");
+      logger.info("🤖 Starting KILOCODE CLI with Multi-LLM Provider Support...\n");
 
       const app = render(React.createElement(AppWithProvider, {}));
 
       // Handle graceful shutdown
       const handleShutdown = async () => {
         try {
-          logger.info("Shutting down JURIKO CLI...");
+          logger.info("Shutting down KILOCODE CLI...");
           await mcpManager.shutdown();
           process.exit(0);
         } catch (error: any) {
@@ -156,7 +156,7 @@ program
         handleShutdown();
       });
     } catch (error: any) {
-      logger.error("❌ Error initializing JURIKO CLI:", error.message);
+      logger.error("❌ Error initializing KILOCODE CLI:", error.message);
       process.exit(1);
     }
   });
@@ -190,7 +190,7 @@ settingsCmd
   .action(async () => {
     try {
       const settings = await getEffectiveSettings();
-      console.log('\n🔧 Current JURIKO Settings:');
+      console.log('\n🔧 Current KILOCODE Settings:');
       console.log('─'.repeat(40));
       console.log(`Response Style: ${settings.responseStyle}`);
       console.log(`Multi-Tool Batching (BETA): ${settings.enableBatching ? 'ON' : 'OFF'}`);

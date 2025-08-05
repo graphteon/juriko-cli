@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Code Reference System brings Claude Code-inspired clickable file references to JURIKO CLI, enabling seamless navigation between the terminal and your code editor. This feature automatically enhances tool outputs with clickable links that open directly in VSCode.
+The Code Reference System brings Claude Code-inspired clickable file references to KILOCODE CLI, enabling seamless navigation between the terminal and your code editor. This feature automatically enhances tool outputs with clickable links that open directly in VSCode.
 
 ## Features
 
@@ -30,17 +30,17 @@ The Code Reference System brings Claude Code-inspired clickable file references 
 
 ```bash
 # Enable code references (default)
-juriko --enable-code-references
+kilocode --enable-code-references
 
 # Disable code references
-juriko --disable-code-references
+kilocode --disable-code-references
 ```
 
 ### Environment Variables
 
 ```bash
 # Enable/disable code references
-export JURIKO_ENABLE_CODE_REFERENCES=true  # or 'false'
+export KILOCODE_ENABLE_CODE_REFERENCES=true  # or 'false'
 ```
 
 ### Reference Formats
@@ -261,7 +261,7 @@ The test suite validates:
 ### Debug Mode
 Enable debug logging for reference processing:
 ```bash
-export JURIKO_DEBUG_REFERENCES=true
+export KILOCODE_DEBUG_REFERENCES=true
 ```
 
 ## Future Enhancements
@@ -301,4 +301,4 @@ export JURIKO_DEBUG_REFERENCES=true
 
 ---
 
-*This feature is part of the Claude Code-inspired improvement plan for JURIKO CLI, bringing professional-grade code navigation to the terminal experience.*
+*This feature is part of the Claude Code-inspired improvement plan for KILOCODE CLI, bringing professional-grade code navigation to the terminal experience.*

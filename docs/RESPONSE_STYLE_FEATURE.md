@@ -1,10 +1,10 @@
-# Response Style Feature - JURIKO CLI
+# Response Style Feature - KILOCODE CLI
 
 This document describes the new response style feature that provides concise communication modes inspired by Claude Code patterns.
 
 ## Overview
 
-The Response Style feature allows users to control the verbosity and communication style of JURIKO CLI responses, enabling more efficient interactions for different use cases.
+The Response Style feature allows users to control the verbosity and communication style of KILOCODE CLI responses, enabling more efficient interactions for different use cases.
 
 ## Features
 
@@ -32,13 +32,13 @@ The Response Style feature allows users to control the verbosity and communicati
 
 ```bash
 # Enable concise mode
-juriko --concise
+kilocode --concise
 
-# Enable verbose mode  
-juriko --verbose
+# Enable verbose mode
+kilocode --verbose
 
 # Default balanced mode
-juriko
+kilocode
 
 # Test response formatting
 npm run test:response-style
@@ -48,9 +48,9 @@ npm run test:response-style
 
 ```bash
 # Set security validation level
-juriko --security-level low     # Basic validation
-juriko --security-level medium  # Standard validation (default)
-juriko --security-level high    # Strict validation with malicious code detection
+kilocode --security-level low     # Basic validation
+kilocode --security-level medium  # Standard validation (default)
+kilocode --security-level high    # Strict validation with malicious code detection
 ```
 
 ## Implementation Details
@@ -146,19 +146,19 @@ npm run build
 npm run typecheck
 
 # Test different modes
-juriko --concise
-juriko --verbose
-juriko --security-level high
+kilocode --concise
+kilocode --verbose
+kilocode --security-level high
 ```
 
 ## Environment Variables
 
 ```bash
 # Set response style
-export JURIKO_RESPONSE_STYLE=concise|verbose|balanced
+export KILOCODE_RESPONSE_STYLE=concise|verbose|balanced
 
 # Set security level
-export JURIKO_SECURITY_LEVEL=low|medium|high
+export KILOCODE_SECURITY_LEVEL=low|medium|high
 ```
 
 ## Benefits
@@ -211,7 +211,7 @@ export JURIKO_SECURITY_LEVEL=low|medium|high
 ### Debug Commands
 ```bash
 # Check current configuration
-juriko --help
+kilocode --help
 
 # Test response formatting
 node examples/test-concise-mode.js
@@ -220,4 +220,4 @@ node examples/test-concise-mode.js
 npm run build && npm run typecheck
 ```
 
-This feature brings JURIKO CLI closer to Claude Code's efficient communication patterns while maintaining flexibility for different user needs.
+This feature brings KILOCODE CLI closer to Claude Code's efficient communication patterns while maintaining flexibility for different user needs.

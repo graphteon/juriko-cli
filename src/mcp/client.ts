@@ -11,7 +11,7 @@ import {
 } from './types';
 import { logger } from '../utils/logger';
 
-export class JurikoMCPClient {
+export class KilocodeMCPClient {
   private clients: Map<string, MCPClient> = new Map();
   private connectionStatus: Map<string, MCPConnectionStatus> = new Map();
 
@@ -23,7 +23,7 @@ export class JurikoMCPClient {
       logger.info(`Connecting to MCP server: ${serverName} (${config.type})`);
 
       const client = new MCPClient({
-        name: 'juriko-cli',
+        name: 'kilocode-cli',
         version: '1.0.0'
       });
 
@@ -444,4 +444,4 @@ export class JurikoMCPClient {
 }
 
 // Export singleton instance
-export const jurikoMCPClient = new JurikoMCPClient();
+export const kilocodeMCPClient = new KilocodeMCPClient();

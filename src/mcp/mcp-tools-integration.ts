@@ -1,6 +1,6 @@
 import { MCPTool, MCPToolCall, MCPToolResult } from './types';
-import { jurikoMCPClient } from './client';
-import { JurikoTool } from '../juriko/client';
+import { kilocodeMCPClient } from './client';
+import { KilocodeTool } from '../juriko/client';
 import { logger } from '../utils/logger';
 import { validateArgumentTypes } from '../utils/argument-parser';
 
@@ -15,7 +15,7 @@ export class MCPToolsIntegration {
    */
   async loadMCPTools(): Promise<void> {
     try {
-      this.mcpTools = await jurikoMCPClient.getAllTools();
+      this.mcpTools = await kilocodeMCPClient.getAllTools();
       logger.info(`Loaded ${this.mcpTools.length} MCP tools from connected servers`);
     } catch (error: any) {
       logger.error(`Error loading MCP tools: ${error.message}`);
@@ -26,14 +26,14 @@ export class MCPToolsIntegration {
   /**
    * Get all MCP tools in Juriko format
    */
-  getJurikoTools(): JurikoTool[] {
-    return this.mcpTools.map(mcpTool => this.convertMCPToolToJuriko(mcpTool));
+  getKilocodeTools(): KilocodeTool[] {
+    return this.mcpTools.map(mcpTool => this.convertMCPToolToKilocode(mcpTool));
   }
 
   /**
    * Convert MCP tool to Juriko tool format
    */
-  private convertMCPToolToJuriko(mcpTool: MCPTool): JurikoTool {
+  private convertMCPToolToKilocode(mcpTool: MCPTool): KilocodeTool {
     const sanitizedServerName = this.sanitizeToolName(mcpTool.serverName);
     const sanitizedToolName = this.sanitizeToolName(mcpTool.name);
     const fullToolName = `mcp_${sanitizedServerName}_${sanitizedToolName}`;
@@ -122,7 +122,7 @@ export class MCPToolsIntegration {
     };
 
     try {
-      const result = await jurikoMCPClient.callTool(toolCall);
+      const result = await kilocodeMCPClient.callTool(toolCall);
       logger.info(`Executed MCP tool ${toolName} successfully`);
       return result;
     } catch (error: any) {
@@ -144,8 +144,8 @@ export class MCPToolsIntegration {
   /**
    * Get MCP tool by Juriko tool name
    */
-  getMCPToolByJurikoName(jurikoToolName: string): MCPTool | null {
-    const parsed = this.parseToolName(jurikoToolName);
+  getMCPToolByKilocodeName(kilocodeToolName: string): MCPTool | null {
+    const parsed = this.parseToolName(kilocodeToolName);
     if (!parsed) {
       return null;
     }

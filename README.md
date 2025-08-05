@@ -1,4 +1,4 @@
-# JURIKO CLI
+# KILOCODE CLI
 
 A conversational AI CLI tool with intelligent text editor capabilities and tool usage.
 
@@ -14,7 +14,7 @@ A conversational AI CLI tool with intelligent text editor capabilities and tool 
 - **🔧 Automatic Tool Selection**: AI intelligently chooses the right tools for your requests
 - **💬 Interactive UI**: Beautiful terminal interface built with Ink
 - **⚙️ Persistent Settings**: Save your preferred provider and model settings
-- **🌍 Global Installation**: Install and use anywhere with `npm i -g @graphteon/juriko-cli`
+- **🌍 Global Installation**: Install and use anywhere with `npm i -g @biznetgio/kilocode-cli`
 
 ## Installation
 
@@ -28,13 +28,13 @@ A conversational AI CLI tool with intelligent text editor capabilities and tool 
 
 ### Global Installation (Recommended)
 ```bash
-npm install -g @graphteon/juriko-cli
+npm install -g @biznetgio/kilocode-cli
 ```
 
 ### Local Development
 ```bash
 git clone <repository>
-cd juriko-cli
+cd kilocode-cli
 npm install
 npm run build
 npm link
@@ -44,7 +44,7 @@ npm link
 
 ### Multi-LLM Provider Support
 
-JURIKO supports multiple AI providers. You can set up API keys for any or all of them:
+KILOCODE supports multiple AI providers. You can set up API keys for any or all of them:
 
 **Method 1: Environment Variables**
 ```bash
@@ -70,13 +70,13 @@ cp .env.example .env
 
 **Method 3: Command Line Flags**
 ```bash
-juriko --anthropic-key your_anthropic_key_here
-juriko --openai-key your_openai_key_here
-juriko --grok-key your_grok_key_here
+kilocode --anthropic-key your_anthropic_key_here
+kilocode --openai-key your_openai_key_here
+kilocode --grok-key your_grok_key_here
 ```
 
 **Method 4: User Settings File**
-Create `~/.juriko/user-settings.json`:
+Create `~/.kilocode/user-settings.json`:
 ```json
 {
   "provider": "anthropic",
@@ -95,7 +95,7 @@ Create `~/.juriko/user-settings.json`:
 
 ### Local LLM Setup
 
-JURIKO supports connecting to local LLM servers that expose OpenAI-compatible APIs. This includes popular local LLM solutions like:
+KILOCODE supports connecting to local LLM servers that expose OpenAI-compatible APIs. This includes popular local LLM solutions like:
 
 - **LM Studio**: Download and run models locally with a user-friendly interface
 - **Ollama**: Lightweight, extensible framework for running LLMs locally
@@ -110,22 +110,22 @@ JURIKO supports connecting to local LLM servers that expose OpenAI-compatible AP
 1. Download and install [LM Studio](https://lmstudio.ai/)
 2. Download a model (e.g., Llama 2, Code Llama, Mistral)
 3. Start the local server (usually runs on `http://localhost:1234/v1`)
-4. Select "Local" provider in JURIKO and use the wizard
+4. Select "Local" provider in KILOCODE and use the wizard
 
 **Ollama:**
 1. Install [Ollama](https://ollama.ai/)
 2. Pull a model: `ollama pull llama2`
 3. Start Ollama server: `ollama serve` (runs on `http://localhost:11434/v1`)
-4. Select "Local" provider in JURIKO and configure
+4. Select "Local" provider in KILOCODE and configure
 
 **llama.cpp:**
 1. Build llama.cpp with server support
 2. Start server: `./server -m model.gguf --port 8080`
-3. Use `http://localhost:8080/v1` as base URL in JURIKO
+3. Use `http://localhost:8080/v1` as base URL in KILOCODE
 
 #### Local LLM Configuration Wizard
 
-When you select "Local" as your provider, JURIKO will guide you through a 4-step configuration wizard:
+When you select "Local" as your provider, KILOCODE will guide you through a 4-step configuration wizard:
 
 1. **Base URL**: Enter your local server URL (e.g., `http://localhost:1234/v1`)
 2. **Model Name**: Specify the model name your server uses
@@ -136,7 +136,7 @@ The wizard includes helpful examples and validates your configuration before pro
 
 ### Provider Selection
 
-When you first run JURIKO, you'll be presented with an interactive interface to:
+When you first run KILOCODE, you'll be presented with an interactive interface to:
 
 1. **Select your preferred LLM provider** (Anthropic, OpenAI, Grok, or Local)
 2. **Choose a model** from the available options for that provider
@@ -146,7 +146,7 @@ When you first run JURIKO, you'll be presented with an interactive interface to:
 You can change providers anytime by:
 - Typing `provider` or `switch` in the chat
 - Pressing `Ctrl+P` for quick provider switching
-- Running `juriko` again to go through the selection process
+- Running `kilocode` again to go through the selection process
 
 ### Supported Models
 
@@ -176,29 +176,29 @@ You can change providers anytime by:
 
 Start the conversational AI assistant:
 ```bash
-juriko
+kilocode
 ```
 
 Or specify a working directory:
 ```bash
-juriko -d /path/to/project
+kilocode -d /path/to/project
 ```
 
 ### Response Style Options
 
-Control the verbosity and communication style of JURIKO responses:
+Control the verbosity and communication style of KILOCODE responses:
 
 ```bash
 # Concise mode - short, direct responses (< 4 lines)
-juriko --concise
+kilocode --concise
 
 # Verbose mode - detailed explanations and context
-juriko --verbose
+kilocode --verbose
 
 # Security level control
-juriko --security-level high    # Strict validation
-juriko --security-level medium  # Standard validation (default)
-juriko --security-level low     # Basic validation
+kilocode --security-level high    # Strict validation
+kilocode --security-level medium  # Standard validation (default)
+kilocode --security-level low     # Basic validation
 ```
 
 **Response Style Benefits:**
@@ -212,15 +212,15 @@ Enable parallel execution of independent tools for improved performance:
 
 ```bash
 # Enable batching (parallel execution)
-juriko --enable-batching
+kilocode --enable-batching
 
 # Disable batching (sequential execution)
-juriko --disable-batching
+kilocode --disable-batching
 ```
 
 Or via environment variable:
 ```bash
-export JURIKO_ENABLE_BATCHING=true  # or 'false'
+export KILOCODE_ENABLE_BATCHING=true  # or 'false'
 ```
 
 **Performance Benefits:**
@@ -241,15 +241,15 @@ Enhanced file navigation with clickable references inspired by Claude Code patte
 
 ```bash
 # Enable code references (enabled by default)
-juriko --enable-code-references
+kilocode --enable-code-references
 
 # Disable code references
-juriko --disable-code-references
+kilocode --disable-code-references
 ```
 
 Or via environment variable:
 ```bash
-export JURIKO_ENABLE_CODE_REFERENCES=true  # or 'false'
+export KILOCODE_ENABLE_CODE_REFERENCES=true  # or 'false'
 ```
 
 **Features:**
@@ -266,7 +266,7 @@ export JURIKO_ENABLE_CODE_REFERENCES=true  # or 'false'
 
 ### First Run Experience
 
-On your first run, JURIKO will guide you through:
+On your first run, KILOCODE will guide you through:
 
 1. **Provider Selection**: Choose from Anthropic, OpenAI, or Grok
 2. **Model Selection**: Pick the best model for your needs
@@ -283,15 +283,15 @@ You can easily switch between providers and models:
 
 ### Custom Instructions
 
-You can provide custom instructions to tailor JURIKO's behavior to your project by creating a `.juriko/JURIKO.md` file in your project directory:
+You can provide custom instructions to tailor KILOCODE's behavior to your project by creating a `.kilocode/KILOCODE.md` file in your project directory:
 
 ```bash
-mkdir .juriko
+mkdir .kilocode
 ```
 
-Create `.juriko/JURIKO.md` with your custom instructions:
+Create `.kilocode/KILOCODE.md` with your custom instructions:
 ```markdown
-# Custom Instructions for JURIKO CLI
+# Custom Instructions for KILOCODE CLI
 
 Always use TypeScript for any new code files.
 When creating React components, use functional components with hooks.
@@ -300,11 +300,11 @@ Always add JSDoc comments for public functions and interfaces.
 Follow the existing code style and patterns in this project.
 ```
 
-JURIKO will automatically load and follow these instructions when working in your project directory. The custom instructions are added to JURIKO's system prompt and take priority over default behavior.
+KILOCODE will automatically load and follow these instructions when working in your project directory. The custom instructions are added to KILOCODE's system prompt and take priority over default behavior.
 
 ## Example Conversations
 
-Instead of typing commands, just tell JURIKO what you want to do:
+Instead of typing commands, just tell KILOCODE what you want to do:
 
 ```
 💬 "Show me the contents of package.json"
@@ -343,19 +343,19 @@ The package.json contains your project configuration including dependencies like
 
 ### Using with Local LLMs
 
-JURIKO works seamlessly with local LLM servers. Here are some examples:
+KILOCODE works seamlessly with local LLM servers. Here are some examples:
 
 ```bash
 # Using with LM Studio (Code Llama for coding tasks)
-juriko  # Select Local provider, use http://localhost:1234/v1
+kilocode  # Select Local provider, use http://localhost:1234/v1
 
 # Using with Ollama (Llama 2 for general tasks)
 ollama serve
-juriko  # Select Local provider, use http://localhost:11434/v1
+kilocode  # Select Local provider, use http://localhost:11434/v1
 
 # Using with custom llama.cpp server
 ./server -m codellama-7b.gguf --port 8080
-juriko  # Select Local provider, use http://localhost:8080/v1
+kilocode  # Select Local provider, use http://localhost:8080/v1
 ```
 
 Local LLMs are particularly useful for:
@@ -366,11 +366,11 @@ Local LLMs are particularly useful for:
 
 ## MCP Integration
 
-JURIKO supports the Model Context Protocol (MCP), allowing you to connect to external tools and resources through MCP servers. This extends JURIKO's capabilities beyond built-in tools.
+KILOCODE supports the Model Context Protocol (MCP), allowing you to connect to external tools and resources through MCP servers. This extends KILOCODE's capabilities beyond built-in tools.
 
 ### MCP Configuration
 
-Create `~/.juriko/mcp-settings.json` to configure MCP servers:
+Create `~/.kilocode/mcp-settings.json` to configure MCP servers:
 
 ```json
 {
@@ -450,14 +450,14 @@ Examples :
 
 ### Available MCP Tools
 
-Once configured, MCP tools become available in JURIKO with the naming pattern `mcp_{server}_{tool}`. For example:
+Once configured, MCP tools become available in KILOCODE with the naming pattern `mcp_{server}_{tool}`. For example:
 - `mcp_filesystem_read_file` - Read files through filesystem server
 - `mcp_brave_search_web_search` - Search the web using Brave Search
 - `mcp_weather_get_forecast` - Get weather data from a weather server
 
 ### MCP Resources
 
-MCP servers can also provide resources (data sources) that JURIKO can access for context, such as:
+MCP servers can also provide resources (data sources) that KILOCODE can access for context, such as:
 - File contents from filesystem servers
 - API responses from web services
 - Database query results
@@ -469,7 +469,7 @@ For detailed MCP setup and troubleshooting, see [`docs/MCP_INTEGRATION.md`](docs
 
 ### Token Management & Conversation Condensing
 
-JURIKO includes automatic conversation condensing to manage token usage efficiently. When conversations approach the model's token limit, JURIKO automatically summarizes older messages while preserving recent context.
+KILOCODE includes automatic conversation condensing to manage token usage efficiently. When conversations approach the model's token limit, KILOCODE automatically summarizes older messages while preserving recent context.
 
 **Condense Threshold Configuration:**
 
@@ -477,16 +477,16 @@ The condense threshold determines when conversation condensing is triggered (def
 
 ```bash
 # Set via environment variable (highest priority)
-export JURIKO_CONDENSE_THRESHOLD=80
-juriko
+export KILOCODE_CONDENSE_THRESHOLD=80
+kilocode
 
 # Or set for single session
-JURIKO_CONDENSE_THRESHOLD=85 juriko
+KILOCODE_CONDENSE_THRESHOLD=85 kilocode
 ```
 
 **User Settings Configuration:**
 
-Edit `~/.juriko/user-settings.json`:
+Edit `~/.kilocode/user-settings.json`:
 ```json
 {
   "provider": "anthropic",

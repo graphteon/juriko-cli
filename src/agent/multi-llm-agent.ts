@@ -305,7 +305,7 @@ export class MultiLLMAgent extends EventEmitter {
   }
 
   private getResponseStyleFromEnv(): ResponseStyle {
-    const styleEnv = process.env.JURIKO_RESPONSE_STYLE;
+    const styleEnv = process.env.KILOCODE_RESPONSE_STYLE;
     
     switch (styleEnv) {
       case 'concise':
@@ -318,7 +318,7 @@ export class MultiLLMAgent extends EventEmitter {
   }
 
   private getSecurityLevelFromEnv(): 'low' | 'medium' | 'high' {
-    const level = process.env.JURIKO_SECURITY_LEVEL;
+    const level = process.env.KILOCODE_SECURITY_LEVEL;
     if (level === 'low' || level === 'medium' || level === 'high') {
       return level;
     }
@@ -326,12 +326,12 @@ export class MultiLLMAgent extends EventEmitter {
   }
 
   private getBatchingEnabledFromEnv(): boolean {
-    const enabled = process.env.JURIKO_ENABLE_BATCHING?.toLowerCase();
+    const enabled = process.env.KILOCODE_ENABLE_BATCHING?.toLowerCase();
     return enabled === 'true' || enabled === '1';
   }
 
   private getCodeReferencesEnabledFromEnv(): boolean {
-    const enabled = process.env.JURIKO_ENABLE_CODE_REFERENCES?.toLowerCase();
+    const enabled = process.env.KILOCODE_ENABLE_CODE_REFERENCES?.toLowerCase();
     return enabled !== 'false' && enabled !== '0'; // Default to true unless explicitly disabled
   }
 
@@ -1146,8 +1146,8 @@ export class MultiLLMAgent extends EventEmitter {
   private async performCondense(isAutomaticTrigger: boolean = false): Promise<CondenseResponse> {
     const currentTokens = this.tokenCounter.countMessageTokens(this.messages as any);
     
-    // Convert LLMMessage[] to JurikoMessage[] for condense function
-    const jurikoMessages = this.messages.map(msg => ({
+    // Convert LLMMessage[] to KilocodeMessage[] for condense function
+    const kilocodeMessages = this.messages.map(msg => ({
       role: msg.role,
       content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
       tool_calls: msg.tool_calls,
@@ -1155,7 +1155,7 @@ export class MultiLLMAgent extends EventEmitter {
     }));
     
     const condenseResult = await condenseConversation(
-      jurikoMessages,
+      kilocodeMessages,
       this.llmConfig,
       this.tokenCounter,
       currentTokens,
@@ -1167,7 +1167,7 @@ export class MultiLLMAgent extends EventEmitter {
           if (systemMsg?.content) {
             return typeof systemMsg.content === 'string' ? systemMsg.content : JSON.stringify(systemMsg.content);
           }
-          return "You are JURIKO CLI, an AI assistant that helps with file editing, coding tasks, and system operations.";
+          return "You are KILOCODE CLI, an AI assistant that helps with file editing, coding tasks, and system operations.";
         })()
       }
     );

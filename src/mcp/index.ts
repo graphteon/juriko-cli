@@ -1,5 +1,5 @@
 import { mcpSettingsManager } from './settings-manager';
-import { jurikoMCPClient } from './client';
+import { kilocodeMCPClient } from './client';
 import { mcpToolsIntegration } from './mcp-tools-integration';
 import { MCPServerConfig, MCPConnectionStatus, MCPTool, MCPResource } from './types';
 import { logger } from '../utils/logger';
@@ -52,7 +52,7 @@ export class MCPManager {
   private async connectToServers(servers: Array<{ name: string; config: MCPServerConfig }>): Promise<void> {
     const connectionPromises = servers.map(async ({ name, config }) => {
       try {
-        const connected = await jurikoMCPClient.connectServer(name, config);
+        const connected = await kilocodeMCPClient.connectServer(name, config);
         if (connected) {
           logger.info(`✅ Connected to MCP server: ${name}`);
         } else {
@@ -81,7 +81,7 @@ export class MCPManager {
 
     try {
       logger.info('Shutting down MCP system...');
-      await jurikoMCPClient.disconnectAll();
+      await kilocodeMCPClient.disconnectAll();
       this.initialized = false;
       logger.info('MCP system shutdown complete');
     } catch (error: any) {
@@ -96,7 +96,7 @@ export class MCPManager {
     if (!this.initialized) {
       await this.initialize();
     }
-    return mcpToolsIntegration.getJurikoTools();
+    return mcpToolsIntegration.getKilocodeTools();
   }
 
   /**
@@ -106,7 +106,7 @@ export class MCPManager {
     if (!this.initialized) {
       await this.initialize();
     }
-    return jurikoMCPClient.getAllTools();
+    return kilocodeMCPClient.getAllTools();
   }
 
   /**
@@ -116,7 +116,7 @@ export class MCPManager {
     if (!this.initialized) {
       await this.initialize();
     }
-    return jurikoMCPClient.getAllResources();
+    return kilocodeMCPClient.getAllResources();
   }
 
   /**
@@ -141,14 +141,14 @@ export class MCPManager {
     if (!this.initialized) {
       await this.initialize();
     }
-    return jurikoMCPClient.getResource(serverName, uri);
+    return kilocodeMCPClient.getResource(serverName, uri);
   }
 
   /**
    * Get connection status for all servers
    */
   getConnectionStatuses(): MCPConnectionStatus[] {
-    return jurikoMCPClient.getConnectionStatuses();
+    return kilocodeMCPClient.getConnectionStatuses();
   }
 
   /**
@@ -164,7 +164,7 @@ export class MCPManager {
       logger.info('Refreshing MCP connections...');
       
       // Ping all servers to check connectivity
-      await jurikoMCPClient.pingAllServers();
+      await kilocodeMCPClient.pingAllServers();
       
       // Reload tools
       await mcpToolsIntegration.refreshTools();
@@ -192,7 +192,7 @@ export class MCPManager {
 
       // If enabled, try to connect
       if (config.enabled !== false && this.initialized) {
-        const connected = await jurikoMCPClient.connectServer(serverName, config);
+        const connected = await kilocodeMCPClient.connectServer(serverName, config);
         if (connected) {
           await mcpToolsIntegration.refreshTools();
           logger.info(`Added and connected to MCP server: ${serverName}`);
@@ -214,8 +214,8 @@ export class MCPManager {
   async removeServer(serverName: string): Promise<boolean> {
     try {
       // Disconnect if connected
-      if (jurikoMCPClient.isServerConnected(serverName)) {
-        await jurikoMCPClient.disconnectServer(serverName);
+      if (kilocodeMCPClient.isServerConnected(serverName)) {
+        await kilocodeMCPClient.disconnectServer(serverName);
       }
 
       // Remove from settings
@@ -245,14 +245,14 @@ export class MCPManager {
           // Connect to the server
           const config = mcpSettingsManager.getServer(serverName);
           if (config) {
-            const connected = await jurikoMCPClient.connectServer(serverName, config);
+            const connected = await kilocodeMCPClient.connectServer(serverName, config);
             if (connected) {
               await mcpToolsIntegration.refreshTools();
             }
           }
         } else {
           // Disconnect from the server
-          await jurikoMCPClient.disconnectServer(serverName);
+          await kilocodeMCPClient.disconnectServer(serverName);
           await mcpToolsIntegration.refreshTools();
         }
       }
@@ -307,5 +307,5 @@ export const mcpManager = new MCPManager();
 // Export all types and utilities
 export * from './types';
 export { mcpSettingsManager } from './settings-manager';
-export { jurikoMCPClient } from './client';
+export { kilocodeMCPClient } from './client';
 export { mcpToolsIntegration } from './mcp-tools-integration';

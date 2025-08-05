@@ -1,12 +1,12 @@
-# JURIKO CLI - Condense Threshold Guide
+# KILOCODE CLI - Condense Threshold Guide
 
 ## Overview
 
-JURIKO CLI includes an automatic conversation condensing feature that helps manage token usage by summarizing older parts of conversations when they approach the token limit. The condense threshold determines when this condensing is triggered.
+KILOCODE CLI includes an automatic conversation condensing feature that helps manage token usage by summarizing older parts of conversations when they approach the token limit. The condense threshold determines when this condensing is triggered.
 
 ## What is the Condense Threshold?
 
-The condense threshold is a percentage value (0-100) that determines when JURIKO should automatically condense (summarize) the conversation to reduce token usage. When the conversation reaches this percentage of the model's token limit, JURIKO will:
+The condense threshold is a percentage value (0-100) that determines when KILOCODE should automatically condense (summarize) the conversation to reduce token usage. When the conversation reaches this percentage of the model's token limit, KILOCODE will:
 
 1. Summarize older messages in the conversation
 2. Keep recent messages intact for context
@@ -22,19 +22,19 @@ The condense threshold is a percentage value (0-100) that determines when JURIKO
 
 ### 1. Environment Variable (Highest Priority)
 
-Set the `JURIKO_CONDENSE_THRESHOLD` environment variable:
+Set the `KILOCODE_CONDENSE_THRESHOLD` environment variable:
 
 ```bash
 # Set threshold to 80%
-export JURIKO_CONDENSE_THRESHOLD=80
+export KILOCODE_CONDENSE_THRESHOLD=80
 
-# Or run JURIKO with the environment variable
-JURIKO_CONDENSE_THRESHOLD=80 juriko
+# Or run KILOCODE with the environment variable
+KILOCODE_CONDENSE_THRESHOLD=80 kilocode
 ```
 
 ### 2. User Settings File
 
-The threshold is stored in `~/.juriko/user-settings.json`:
+The threshold is stored in `~/.kilocode/user-settings.json`:
 
 ```json
 {
@@ -61,10 +61,10 @@ await saveCondenseThreshold(85); // Set to 85%
 
 ## Configuration Priority
 
-JURIKO checks for the condense threshold in this order:
+KILOCODE checks for the condense threshold in this order:
 
-1. **Environment Variable**: `JURIKO_CONDENSE_THRESHOLD` (0-100)
-2. **User Settings**: `~/.juriko/user-settings.json`
+1. **Environment Variable**: `KILOCODE_CONDENSE_THRESHOLD` (0-100)
+2. **User Settings**: `~/.kilocode/user-settings.json`
 3. **Default**: 75%
 
 ## Recommended Thresholds
@@ -88,7 +88,7 @@ JURIKO checks for the condense threshold in this order:
 
 When the threshold is reached:
 
-1. **Token Analysis**: JURIKO calculates current token usage vs. model limit
+1. **Token Analysis**: KILOCODE calculates current token usage vs. model limit
 2. **Message Selection**: Identifies older messages for condensing
 3. **Summarization**: Uses the AI model to create a concise summary
 4. **Context Preservation**: Keeps recent messages and important context
@@ -100,16 +100,16 @@ When the threshold is reached:
 
 ```bash
 # Terminal 1: Set for current session
-export JURIKO_CONDENSE_THRESHOLD=70
-juriko
+export KILOCODE_CONDENSE_THRESHOLD=70
+kilocode
 
 # Terminal 2: Set for single run
-JURIKO_CONDENSE_THRESHOLD=85 juriko
+KILOCODE_CONDENSE_THRESHOLD=85 kilocode
 ```
 
 ### Manual User Settings File Edit
 
-Edit `~/.juriko/user-settings.json`:
+Edit `~/.kilocode/user-settings.json`:
 
 ```json
 {
@@ -126,10 +126,10 @@ You can verify your current settings by examining the user settings file:
 
 ```bash
 # View current settings
-cat ~/.juriko/user-settings.json
+cat ~/.kilocode/user-settings.json
 
 # Check if environment variable is set
-echo $JURIKO_CONDENSE_THRESHOLD
+echo $KILOCODE_CONDENSE_THRESHOLD
 ```
 
 ## Model-Specific Considerations
@@ -152,12 +152,12 @@ Different models have different token limits, which affects when condensing trig
 
 ### Issue: Settings not taking effect
 **Check**:
-1. Environment variable value: `echo $JURIKO_CONDENSE_THRESHOLD`
-2. User settings file: `cat ~/.juriko/user-settings.json`
+1. Environment variable value: `echo $KILOCODE_CONDENSE_THRESHOLD`
+2. User settings file: `cat ~/.kilocode/user-settings.json`
 3. Valid range (0-100)
 
 ### Issue: Invalid threshold values
-**Note**: JURIKO automatically clamps values to 0-100 range. Invalid values default to 75%.
+**Note**: KILOCODE automatically clamps values to 0-100 range. Invalid values default to 75%.
 
 ## Best Practices
 
@@ -178,12 +178,12 @@ You can create scripts to adjust thresholds based on context:
 # Set different thresholds for different projects
 
 if [[ "$PWD" == *"large-project"* ]]; then
-    export JURIKO_CONDENSE_THRESHOLD=85  # More context for complex projects
+    export KILOCODE_CONDENSE_THRESHOLD=85  # More context for complex projects
 else
-    export JURIKO_CONDENSE_THRESHOLD=70  # Less context for simple tasks
+    export KILOCODE_CONDENSE_THRESHOLD=70  # Less context for simple tasks
 fi
 
-juriko
+kilocode
 ```
 
 ### Project-Specific Configuration
@@ -192,14 +192,14 @@ Create project-specific threshold settings:
 
 ```bash
 # In your project directory
-echo 'export JURIKO_CONDENSE_THRESHOLD=80' > .jurikorc
-source .jurikorc
-juriko
+echo 'export KILOCODE_CONDENSE_THRESHOLD=80' > .kilocoderc
+source .kilocoderc
+kilocode
 ```
 
 ## Summary
 
-The condense threshold is a powerful feature that helps JURIKO manage long conversations efficiently. By understanding and configuring this setting appropriately, you can optimize the balance between context preservation and token usage for your specific needs.
+The condense threshold is a powerful feature that helps KILOCODE manage long conversations efficiently. By understanding and configuring this setting appropriately, you can optimize the balance between context preservation and token usage for your specific needs.
 
 **Default**: 75% - Good for most users
 **Configuration**: Environment variable or user settings file

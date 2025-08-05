@@ -1,6 +1,6 @@
 # Conversation Condense Feature
 
-The JURIKO CLI includes an intelligent conversation condensing feature that automatically manages token usage to prevent hitting context window limits while preserving important conversation context.
+The KILOCODE CLI includes an intelligent conversation condensing feature that automatically manages token usage to prevent hitting context window limits while preserving important conversation context.
 
 ## How It Works
 
@@ -58,7 +58,7 @@ The system automatically detects token limits for different models:
    - Handles user confirmation for manual condensing
    - Integrates with the confirmation system
 
-3. **Agent Integration** (`src/agent/juriko-agent.ts`)
+3. **Agent Integration** (`src/agent/kilocode-agent.ts`)
    - Automatic token monitoring in streaming responses
    - Seamless integration with existing conversation flow
    - Updates both message history and chat display
@@ -107,4 +107,4 @@ The system gracefully handles various error conditions:
 - **API Failures**: Falls back gracefully if condensing fails
 - **User Cancellation**: Respects user choice to cancel condensing
 
-This feature ensures that JURIKO CLI can handle extended conversations and complex tasks without being limited by token constraints.
+This feature ensures that KILOCODE CLI can handle extended conversations and complex tasks without being limited by token constraints.

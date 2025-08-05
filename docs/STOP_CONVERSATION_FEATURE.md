@@ -1,7 +1,7 @@
 # Stop Conversation Feature
 
 ## Overview
-The JURIKO CLI now includes a convenient way to stop ongoing conversations and operations by pressing the 's' key.
+The KILOCODE CLI now includes a convenient way to stop ongoing conversations and operations by pressing the 's' key.
 
 ## Features Added
 
@@ -54,7 +54,7 @@ The JURIKO CLI now includes a convenient way to stop ongoing conversations and o
 
 ## Usage Examples
 
-1. **Start a long operation**: Ask JURIKO to perform a complex task
+1. **Start a long operation**: Ask KILOCODE to perform a complex task
 2. **Stop the operation**: Press 's' while it's processing
 3. **See confirmation**: The interface shows "⏹️ Operation stopped by user (pressed 's')"
 4. **Continue normally**: You can immediately start a new conversation

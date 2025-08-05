@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Code Reference System**: Clickable file references with VSCode integration
   - `--enable-code-references`: Enable clickable file references (default: enabled)
   - `--disable-code-references`: Disable clickable file references
-  - `JURIKO_ENABLE_CODE_REFERENCES`: Environment variable to control code references
+  - `KILOCODE_ENABLE_CODE_REFERENCES`: Environment variable to control code references
 - **CodeReferenceManager**: Intelligent file reference detection and link generation
 - **VSCode Integration**: Direct navigation to files and specific line numbers
 - **Automatic Enhancement**: Tool outputs automatically include clickable references
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Multi-Tool Batching**: Parallel execution of independent tools for improved performance
   - `--enable-batching`: Enable parallel execution of independent tools
   - `--disable-batching`: Disable parallel execution (use sequential execution)
-  - `JURIKO_ENABLE_BATCHING`: Environment variable to control batching
+  - `KILOCODE_ENABLE_BATCHING`: Environment variable to control batching
 - **BatchToolExecutor**: Intelligent tool dependency analysis and parallel execution
 - **Performance Improvements**: Up to 40% faster execution when multiple independent tools are used
 - **Smart Dependency Detection**: Automatic categorization of tools by type (read/write/compute/network/bash)

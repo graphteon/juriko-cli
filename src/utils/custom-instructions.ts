@@ -4,7 +4,7 @@ import { logger } from './logger';
 
 export function loadCustomInstructions(workingDirectory: string = process.cwd()): string | null {
   try {
-    const instructionsPath = path.join(workingDirectory, '.juriko', 'JURIKO.md');
+    const instructionsPath = path.join(workingDirectory, '.kilocode', 'KILOCODE.md');
     
     if (!fs.existsSync(instructionsPath)) {
       return null;

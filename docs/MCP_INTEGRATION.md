@@ -1,6 +1,6 @@
 # MCP (Model Context Protocol) Integration
 
-JURIKO CLI now supports MCP (Model Context Protocol) integration, allowing you to connect to local and remote MCP servers to extend the AI's capabilities with additional tools and resources.
+KILOCODE CLI now supports MCP (Model Context Protocol) integration, allowing you to connect to local and remote MCP servers to extend the AI's capabilities with additional tools and resources.
 
 ## Overview
 
@@ -8,17 +8,17 @@ The MCP integration provides:
 - Support for local (stdio), HTTP stream, and SSE MCP servers
 - Automatic tool discovery and integration
 - Resource access from MCP servers
-- Configuration management through `~/.juriko/mcp-settings.json`
+- Configuration management through `~/.kilocode/mcp-settings.json`
 - Connection status monitoring and error handling
 
 ## Configuration
 
-MCP servers are configured through the `~/.juriko/mcp-settings.json` file. This file is automatically created with example configurations when you first run JURIKO CLI.
+MCP servers are configured through the `~/.kilocode/mcp-settings.json` file. This file is automatically created with example configurations when you first run KILOCODE CLI.
 
 ### Configuration File Location
 
 ```
-~/.juriko/mcp-settings.json
+~/.kilocode/mcp-settings.json
 ```
 
 ### Configuration Structure
@@ -175,7 +175,7 @@ SSE servers communicate via Server-Sent Events over HTTP.
 
 ## Tool Usage
 
-Once MCP servers are configured and connected, their tools become available in JURIKO with the naming pattern `mcp_{server}_{tool}`.
+Once MCP servers are configured and connected, their tools become available in KILOCODE with the naming pattern `mcp_{server}_{tool}`.
 
 ### Examples
 
@@ -186,7 +186,7 @@ Once MCP servers are configured and connected, their tools become available in J
 
 ## Resource Access
 
-MCP servers can also provide resources (data sources) that JURIKO can access for context:
+MCP servers can also provide resources (data sources) that KILOCODE can access for context:
 
 - File contents from filesystem servers
 - API responses from web services
@@ -242,7 +242,7 @@ Enable debug logging by setting:
 
 ### Log Files
 
-MCP logs are integrated with JURIKO's logging system. Check the console output for connection status and error messages.
+MCP logs are integrated with KILOCODE's logging system. Check the console output for connection status and error messages.
 
 ## Security Considerations
 
@@ -300,4 +300,4 @@ MCP logs are integrated with JURIKO's logging system. Check the console output f
 }
 ```
 
-This configuration provides filesystem access, web search capabilities, and connection to a remote API server, giving JURIKO a comprehensive set of tools to work with.
+This configuration provides filesystem access, web search capabilities, and connection to a remote API server, giving KILOCODE a comprehensive set of tools to work with.
