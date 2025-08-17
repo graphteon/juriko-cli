@@ -160,9 +160,11 @@ export async function condenseConversation(
       content: `Previous conversation summary:\n\n${summary}`
     });
 
-    // Add the most recent messages to maintain context
-    const recentMessages = messages.slice(-maxMessagesToKeep);
-    condensedMessages.push(...recentMessages);
+    // Only add recent messages if maxMessagesToKeep > 0
+    if (maxMessagesToKeep > 0) {
+      const recentMessages = messages.slice(-maxMessagesToKeep);
+      condensedMessages.push(...recentMessages);
+    }
 
     // Calculate new token count
     const newContextTokens = tokenCounter.countMessageTokens(condensedMessages as any);

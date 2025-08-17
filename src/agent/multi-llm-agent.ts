@@ -176,23 +176,6 @@ const MULTI_LLM_TOOLS = [
       }
     }
   },
-  {
-    type: "function" as const,
-    function: {
-      name: "condense_conversation",
-      description: "Condense the conversation to reduce token usage while preserving important context",
-      parameters: {
-        type: "object" as const,
-        properties: {
-          context: {
-            type: "string",
-            description: "Optional context for the condensing operation"
-          }
-        },
-        required: []
-      }
-    }
-  }
 ];
 
 export class MultiLLMAgent extends EventEmitter {
@@ -1160,7 +1143,7 @@ export class MultiLLMAgent extends EventEmitter {
       this.tokenCounter,
       currentTokens,
       {
-        maxMessagesToKeep: 3,
+        maxMessagesToKeep: 0, // Don't keep any old messages, replace everything with summary
         isAutomaticTrigger,
         systemPrompt: (() => {
           const systemMsg = this.messages.find(m => m.role === 'system');
@@ -1173,7 +1156,7 @@ export class MultiLLMAgent extends EventEmitter {
     );
 
     if (!condenseResult.error) {
-      // Convert back to LLMMessage[] and update the messages
+      // Completely replace messages with condensed version
       this.messages = condenseResult.messages.map(msg => ({
         role: msg.role as 'system' | 'user' | 'assistant' | 'tool',
         content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
@@ -1181,16 +1164,12 @@ export class MultiLLMAgent extends EventEmitter {
         tool_call_id: (msg as any).tool_call_id
       }));
       
-      // Update chat history to reflect the condensing
-      const condensedEntry: ChatEntry = {
-        type: "assistant",
-        content: `📝 **Conversation Summary**\n\n${condenseResult.summary}`,
+      // Completely replace chat history with just the condensed summary
+      this.chatHistory = [{
+        type: "user",
+        content: `Previous conversation summary:\n\n${condenseResult.summary}`,
         timestamp: new Date(),
-      };
-      
-      // Replace older entries with the summary, keep recent ones
-      const recentEntries = this.chatHistory.slice(-6); // Keep last 6 entries
-      this.chatHistory = [condensedEntry, ...recentEntries];
+      }];
     }
 
     return condenseResult;
@@ -1242,8 +1221,6 @@ export class MultiLLMAgent extends EventEmitter {
         case "update_todo_list":
           return await this.todoTool.updateTodoList(args.updates);
 
-        case "condense_conversation":
-          return await this.condenseTool.condenseConversation(args.context);
 
         default:
           // Check if it's an MCP tool
