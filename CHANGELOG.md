@@ -147,6 +147,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graceful error handling and fallback mechanisms
 - State management for condensed conversations in chat history
 
+## [0.3.4] - 2025-08-17
+
+### Improved
+- **Conversation Condensing**: Complete replacement of conversation history with condensed summary
+  - Set `maxMessagesToKeep` to 0 for complete history replacement
+  - Removed `condense_conversation` tool from available tools list
+  - Completely replace chat history with just the condensed summary
+  - Improved conditional logic in `condenseConversation` utility function
+
+### Added
+- **Comprehensive Test Suite**: Added test script for automatic condensing verification
+  - `test/automatic-condense-test.js`: Full test suite for condensing functionality
+  - Verification of token efficiency and conversation state management
+  - Testing of edge cases and error conditions
+
+### Technical Improvements
+- Enhanced token efficiency by completely removing all previous messages
+- Cleaner state management with simplified conversation history handling
+- Better performance through reduced memory footprint after condensing
+
 ## [0.1.0] - 2025-01-25
 
 ### Added
