@@ -1,5 +1,5 @@
 import { LLMClient } from "../llm/client";
-import { LLMMessage, LLMToolCall, LLMConfig, LLMProvider } from "../llm/types";
+import { LLMMessage, LLMToolCall, LLMConfig } from "../llm/types";
 import { TextEditorTool, BashTool, TodoTool, ConfirmationTool, CondenseTool } from "../tools";
 import { ToolResult } from "../types";
 import { EventEmitter } from "events";
@@ -15,7 +15,7 @@ import {
 import { parseToolCallArguments, validateArgumentTypes } from "../utils/argument-parser";
 import { SystemPromptBuilder, PromptOptions } from "./prompts/system-prompt-builder";
 import { ResponseFormatter, ResponseStyle } from "../utils/response-formatter";
-import { BatchToolExecutor, BatchResult } from "../tools/batch-executor";
+import { BatchToolExecutor } from "../tools/batch-executor";
 import { getEffectiveSettings } from "../utils/user-settings";
 
 export interface ChatEntry {
@@ -176,23 +176,6 @@ const MULTI_LLM_TOOLS = [
       }
     }
   },
-  {
-    type: "function" as const,
-    function: {
-      name: "condense_conversation",
-      description: "Condense the conversation to reduce token usage while preserving important context",
-      parameters: {
-        type: "object" as const,
-        properties: {
-          context: {
-            type: "string",
-            description: "Optional context for the condensing operation"
-          }
-        },
-        required: []
-      }
-    }
-  }
 ];
 
 export class MultiLLMAgent extends EventEmitter {
@@ -220,8 +203,8 @@ export class MultiLLMAgent extends EventEmitter {
     this.confirmationTool = new ConfirmationTool();
     this.condenseTool = new CondenseTool();
     
-    // Initialize LLM config for condensing - use provided config or derive from current client
-    this.llmConfig = llmConfig || this.deriveLLMConfigFromClient();
+    // Store provided LLM config if any (for backward compatibility)
+    this.llmConfig = llmConfig || { provider: 'openai', model: 'gpt-4', apiKey: '', baseURL: undefined };
     
     // Initialize token counter with the current model for accurate counting
     this.tokenCounter = createTokenCounter(this.llmClient.getCurrentModel());
@@ -408,47 +391,7 @@ export class MultiLLMAgent extends EventEmitter {
     }
   }
 
-  private deriveLLMConfigFromClient(): LLMConfig {
-    // Extract the current configuration from the LLM client
-    const currentModel = this.llmClient.getCurrentModel();
-    
-    // Determine provider based on model name
-    let provider: LLMProvider = 'openai'; // default fallback
-    let apiKey = '';
-    let baseURL: string | undefined;
-    
-    // Check for Anthropic models
-    if (currentModel.includes('claude')) {
-      provider = 'anthropic';
-      apiKey = process.env.ANTHROPIC_API_KEY || '';
-      baseURL = process.env.ANTHROPIC_BASE_URL;
-    }
-    // Check for Grok models
-    else if (currentModel.includes('grok')) {
-      provider = 'grok';
-      apiKey = process.env.GROK_API_KEY || '';
-      baseURL = process.env.GROK_BASE_URL || 'https://api.x.ai/v1';
-    }
-    // Check for local models
-    else if (currentModel === 'custom-model' || process.env.LOCAL_LLM_BASE_URL) {
-      provider = 'local';
-      apiKey = process.env.LOCAL_LLM_API_KEY || 'local-key';
-      baseURL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:1234/v1';
-    }
-    // Default to OpenAI
-    else {
-      provider = 'openai';
-      apiKey = process.env.OPENAI_API_KEY || '';
-      baseURL = process.env.OPENAI_BASE_URL;
-    }
-    
-    return {
-      provider,
-      model: currentModel,
-      apiKey,
-      baseURL
-    };
-  }
+
 
   private async initializeMCP(): Promise<void> {
     try {
@@ -1156,11 +1099,11 @@ export class MultiLLMAgent extends EventEmitter {
     
     const condenseResult = await condenseConversation(
       jurikoMessages,
-      this.llmConfig,
+      this.llmClient,
       this.tokenCounter,
       currentTokens,
       {
-        maxMessagesToKeep: 3,
+        maxMessagesToKeep: 0, // Don't keep any old messages, replace everything with summary
         isAutomaticTrigger,
         systemPrompt: (() => {
           const systemMsg = this.messages.find(m => m.role === 'system');
@@ -1173,7 +1116,7 @@ export class MultiLLMAgent extends EventEmitter {
     );
 
     if (!condenseResult.error) {
-      // Convert back to LLMMessage[] and update the messages
+      // Completely replace messages with condensed version
       this.messages = condenseResult.messages.map(msg => ({
         role: msg.role as 'system' | 'user' | 'assistant' | 'tool',
         content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
@@ -1181,16 +1124,12 @@ export class MultiLLMAgent extends EventEmitter {
         tool_call_id: (msg as any).tool_call_id
       }));
       
-      // Update chat history to reflect the condensing
-      const condensedEntry: ChatEntry = {
-        type: "assistant",
-        content: `📝 **Conversation Summary**\n\n${condenseResult.summary}`,
+      // Completely replace chat history with just the condensed summary
+      this.chatHistory = [{
+        type: "user",
+        content: `Previous conversation summary:\n\n${condenseResult.summary}`,
         timestamp: new Date(),
-      };
-      
-      // Replace older entries with the summary, keep recent ones
-      const recentEntries = this.chatHistory.slice(-6); // Keep last 6 entries
-      this.chatHistory = [condensedEntry, ...recentEntries];
+      }];
     }
 
     return condenseResult;
@@ -1242,8 +1181,6 @@ export class MultiLLMAgent extends EventEmitter {
         case "update_todo_list":
           return await this.todoTool.updateTodoList(args.updates);
 
-        case "condense_conversation":
-          return await this.condenseTool.condenseConversation(args.context);
 
         default:
           // Check if it's an MCP tool
@@ -1285,8 +1222,8 @@ export class MultiLLMAgent extends EventEmitter {
     // Update token counter for new model
     this.tokenCounter.dispose();
     this.tokenCounter = createTokenCounter(model);
-    // Update LLM config for condensing to match new model
-    this.llmConfig = this.deriveLLMConfigFromClient();
+    // Update LLM config for backward compatibility
+    this.llmConfig = { provider: 'openai', model: model, apiKey: '', baseURL: undefined };
   }
 
   getLLMClient(): LLMClient {
@@ -1295,8 +1232,8 @@ export class MultiLLMAgent extends EventEmitter {
 
   setLLMClient(client: LLMClient): void {
     this.llmClient = client;
-    // Update LLM config for condensing to match new client
-    this.llmConfig = this.deriveLLMConfigFromClient();
+    // Update LLM config for backward compatibility
+    this.llmConfig = { provider: 'openai', model: client.getCurrentModel(), apiKey: '', baseURL: undefined };
   }
 
   abortCurrentOperation(): void {

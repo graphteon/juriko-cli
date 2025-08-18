@@ -1,6 +1,6 @@
 import { JurikoMessage } from "../juriko/client";
 import { LLMClient } from "../llm/client";
-import { LLMConfig, LLMMessage } from "../llm/types";
+import { LLMMessage } from "../llm/types";
 import { TokenCounter } from "./token-counter";
 import { getCondenseThresholdWithEnv } from "./user-settings";
 
@@ -25,7 +25,7 @@ export interface CondenseOptions {
  */
 export async function condenseConversation(
   messages: JurikoMessage[],
-  llmConfig: LLMConfig,
+  llmClient: LLMClient,
   tokenCounter: TokenCounter,
   prevContextTokens: number,
   options: CondenseOptions = {}
@@ -100,8 +100,7 @@ export async function condenseConversation(
         "\n\nOutput only the summary of the conversation so far, without any additional commentary or explanation."
     };
 
-    // Create LLM client for condensing
-    const llmClient = new LLMClient(llmConfig);
+    // Use the provided LLM client directly
 
     // Prepare messages for condensing (exclude system message from the conversation to be summarized)
     const conversationMessages = messages.filter(m => m.role !== 'system');
@@ -160,9 +159,11 @@ export async function condenseConversation(
       content: `Previous conversation summary:\n\n${summary}`
     });
 
-    // Add the most recent messages to maintain context
-    const recentMessages = messages.slice(-maxMessagesToKeep);
-    condensedMessages.push(...recentMessages);
+    // Only add recent messages if maxMessagesToKeep > 0
+    if (maxMessagesToKeep > 0) {
+      const recentMessages = messages.slice(-maxMessagesToKeep);
+      condensedMessages.push(...recentMessages);
+    }
 
     // Calculate new token count
     const newContextTokens = tokenCounter.countMessageTokens(condensedMessages as any);
