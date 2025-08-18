@@ -166,7 +166,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced token efficiency by completely removing all previous messages
 - Cleaner state management with simplified conversation history handling
 - Better performance through reduced memory footprint after condensing
+## [0.4.0] - 2025-08-18
 
+### Refactored
+- **LLM Configuration Handling**: Simplified LLM config management by removing complex deriveLLMConfigFromClient method
+- **Condense Function**: Improved condenseConversation to accept LLMClient directly instead of LLMConfig
+- **Code Cleanup**: Removed unused imports (LLMProvider, BatchResult) to clean up dependencies
+
+### Added
+- **Condense Threshold Setting**: Added configurable condense threshold setting to UI with percentage values
 ## [0.1.0] - 2025-01-25
 
 ### Added
