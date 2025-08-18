@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, Newline, useInput } from 'ink';
-import { 
-  getEffectiveSettings, 
-  saveResponseStyle, 
-  saveBetaFeatures, 
+import {
+  getEffectiveSettings,
+  saveResponseStyle,
+  saveBetaFeatures,
   saveSecurityLevel,
-  resetAllSettings 
+  saveCondenseThreshold,
+  resetAllSettings
 } from '../../utils/user-settings';
 
 interface SettingsMenuProps {
@@ -31,6 +32,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
     { key: 'enableBatching', label: 'Multi-Tool Batching (BETA)', type: 'toggle' as const },
     { key: 'enableCodeReferences', label: 'Code References (BETA)', type: 'toggle' as const },
     { key: 'securityLevel', label: 'Security Level', type: 'select' as const },
+    { key: 'condenseThreshold', label: 'Auto-Condense Threshold', type: 'number' as const },
     { key: 'reset', label: 'Reset to Defaults', type: 'action' as const },
     { key: 'close', label: 'Close Settings', type: 'action' as const },
   ];
@@ -66,6 +68,9 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
           break;
         case 'securityLevel':
           await saveSecurityLevel(value);
+          break;
+        case 'condenseThreshold':
+          await saveCondenseThreshold(value);
           break;
       }
       
@@ -130,6 +135,16 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
           setSettings(newSettings);
           await saveIndividualSetting('securityLevel', levels[nextIndex]);
         }
+      } else if (selectedItem.type === 'number') {
+        if (selectedItem.key === 'condenseThreshold') {
+          // Cycle through common threshold values: 50%, 60%, 70%, 75%, 80%, 85%, 90%
+          const thresholds = [50, 60, 70, 75, 80, 85, 90];
+          const currentIndex = thresholds.indexOf(settings.condenseThreshold);
+          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % thresholds.length;
+          const newSettings = { ...settings, condenseThreshold: thresholds[nextIndex] };
+          setSettings(newSettings);
+          await saveIndividualSetting('condenseThreshold', thresholds[nextIndex]);
+        }
       }
     } else if (key.escape) {
       onClose();
@@ -163,6 +178,8 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
         return settings.enableCodeReferences ? '[ON]' : '[OFF]';
       case 'securityLevel':
         return `[${settings.securityLevel}]`;
+      case 'condenseThreshold':
+        return `[${settings.condenseThreshold}%]`;
       default:
         return '';
     }
@@ -213,9 +230,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ onClose }) => {
         <Text color="gray">Navigation:</Text>
         <Text color="gray">  ↑/↓ - Navigate  ENTER - Toggle/Change  ESC - Close</Text>
         <Newline />
-        <Text color="yellow">Beta Features:</Text>
+        <Text color="yellow">Features:</Text>
         <Text color="gray">  • Multi-Tool Batching: Execute multiple tools in parallel</Text>
         <Text color="gray">  • Code References: Clickable file links in VSCode</Text>
+        <Text color="gray">  • Auto-Condense: Automatically condense conversation at threshold</Text>
         <Newline />
         <Text color="cyan">Settings saved to: ~/.juriko/user-settings.json</Text>
       </Box>
