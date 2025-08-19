@@ -1,4 +1,3 @@
-import { MCPClient } from 'mcp-client';
 import { 
   MCPServerConfig, 
   MCPTool, 
@@ -7,12 +6,24 @@ import {
   MCPToolResult, 
   MCPResourceContent,
   MCPConnectionStatus,
-  MCPServerInfo
+  MCPServerInfo,
+  MCPClientInterface
 } from './types';
 import { logger } from '../utils/logger';
 
+
+// Dynamic import for ES module
+let MCPClient: new (clientInfo: any) => MCPClientInterface;
+async function getMCPClient(): Promise<new (clientInfo: any) => MCPClientInterface> {
+  if (!MCPClient) {
+    const mcpClientModule = await import('mcp-client');
+    MCPClient = mcpClientModule.MCPClient;
+  }
+  return MCPClient;
+}
+
 export class JurikoMCPClient {
-  private clients: Map<string, MCPClient> = new Map();
+  private clients: Map<string, MCPClientInterface> = new Map();
   private connectionStatus: Map<string, MCPConnectionStatus> = new Map();
 
   /**
@@ -22,6 +33,7 @@ export class JurikoMCPClient {
     try {
       logger.info(`Connecting to MCP server: ${serverName} (${config.type})`);
 
+      const MCPClient = await getMCPClient();
       const client = new MCPClient({
         name: 'juriko-cli',
         version: '1.0.0'
@@ -155,7 +167,7 @@ export class JurikoMCPClient {
   /**
    * Get server info
    */
-  private async getServerInfo(client: MCPClient): Promise<MCPServerInfo> {
+  private async getServerInfo(client: MCPClientInterface): Promise<MCPServerInfo> {
     try {
       // Try to get server capabilities and info with individual error handling
       let hasTools = false;
