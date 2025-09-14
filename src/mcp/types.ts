@@ -102,3 +102,13 @@ export interface MCPConnectionStatus {
   lastConnected?: Date;
   serverInfo?: MCPServerInfo;
 }
+
+export interface MCPClientInterface {
+  connect(options: any): Promise<void>;
+  ping(): Promise<null>;
+  getAllTools(): Promise<any[]>;
+  getAllResources(): Promise<any[]>;
+  callTool(invocation: { name: string; arguments?: Record<string, unknown> }): Promise<any>;
+  getResource(params: { uri: string }): Promise<any>;
+  close(): Promise<void>;
+}
