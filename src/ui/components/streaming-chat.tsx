@@ -7,6 +7,7 @@ import ToolCallBox from './tool-call-box';
 import { ConfirmationService, ConfirmationOptions } from '../../utils/confirmation-service';
 import ConfirmationDialog from './confirmation-dialog';
 import { SettingsMenu } from './settings-menu';
+import { ScrollContainer } from './scroll-container';
 import { logger } from '../../utils/logger';
 import { MarkdownRenderer } from '../utils/markdown-renderer';
 
@@ -37,6 +38,13 @@ export default function StreamingChat({ agent, onProviderSwitch, onTokenCountCha
   const isMountedRef = useRef(true);
   const contentBufferRef = useRef('');
   const contentUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRenderTimeRef = useRef(0);
+  const scrollPositionRef = useRef(0);
+  
+  // Constants for performance optimization
+  const MAX_VISIBLE_MESSAGES = 50; // Limit visible messages to prevent performance issues
+  const CONTENT_UPDATE_DELAY = 100; // Increased delay to reduce blinking
+  const MIN_RENDER_INTERVAL = 16; // ~60fps limit for renders
   
   const confirmationService = ConfirmationService.getInstance();
 
@@ -276,8 +284,11 @@ The chat history is automatically saved and will persist between sessions.`,
                   clearTimeout(contentUpdateTimeoutRef.current);
                 }
                 
-                // Debounce content updates (50ms delay)
-                contentUpdateTimeoutRef.current = setTimeout(() => {
+                // Throttle content updates with frame rate limiting
+                const now = Date.now();
+                if (now - lastRenderTimeRef.current >= MIN_RENDER_INTERVAL) {
+                  // Update immediately if enough time has passed
+                  lastRenderTimeRef.current = now;
                   if (isMountedRef.current) {
                     setMessages(prev =>
                       prev.map((msg, idx) =>
@@ -287,7 +298,21 @@ The chat history is automatically saved and will persist between sessions.`,
                       )
                     );
                   }
-                }, 50);
+                } else {
+                  // Debounce content updates with increased delay
+                  contentUpdateTimeoutRef.current = setTimeout(() => {
+                    if (isMountedRef.current) {
+                      lastRenderTimeRef.current = Date.now();
+                      setMessages(prev =>
+                        prev.map((msg, idx) =>
+                          idx === prev.length - 1 && msg.isStreaming
+                            ? { ...msg, content: contentBufferRef.current }
+                            : msg
+                        )
+                      );
+                    }
+                  }, CONTENT_UPDATE_DELAY);
+                }
               }
             }
             break;
@@ -386,7 +411,7 @@ The chat history is automatically saved and will persist between sessions.`,
     switch (message.type) {
       case 'user':
         return (
-          <Box key={index} marginBottom={1}>
+          <Box key={`user-${index}-${message.timestamp.getTime()}`} marginBottom={1}>
             <Text color="blue">❯ </Text>
             <Text>{message.content}</Text>
           </Box>
@@ -394,7 +419,7 @@ The chat history is automatically saved and will persist between sessions.`,
 
       case 'assistant':
         return (
-          <Box key={index} flexDirection="column" marginBottom={1}>
+          <Box key={`assistant-${index}-${message.timestamp.getTime()}`} flexDirection="column" marginBottom={1}>
             {message.content && (
               <Box marginLeft={2}>
                 <MarkdownRenderer content={message.content} />
@@ -406,14 +431,14 @@ The chat history is automatically saved and will persist between sessions.`,
 
       case 'tool_calls':
         return (
-          <Box key={index} flexDirection="column" marginBottom={1} width="100%">
+          <Box key={`tools-${index}-${message.timestamp.getTime()}`} flexDirection="column" marginBottom={1} width="100%">
             {message.toolCalls?.map((toolCall, tcIndex) => {
               // Find corresponding result from chat history
               const result = (toolCall as any).result;
               
               return (
                 <ToolCallBox
-                  key={`${index}-${tcIndex}`}
+                  key={`${index}-${tcIndex}-${toolCall.id}`}
                   toolCall={toolCall}
                   result={result}
                 />
@@ -426,6 +451,41 @@ The chat history is automatically saved and will persist between sessions.`,
         return null;
     }
   }, []);
+
+  // Memoize visible messages to prevent unnecessary re-renders
+  const visibleMessages = useMemo(() => {
+    const totalMessages = messages.length;
+    if (totalMessages <= MAX_VISIBLE_MESSAGES) {
+      return messages;
+    }
+    
+    // Keep the most recent messages and show a truncation indicator
+    const truncatedMessages = messages.slice(-MAX_VISIBLE_MESSAGES);
+    const truncationMessage: ChatMessage = {
+      type: 'assistant',
+      content: `... (${totalMessages - MAX_VISIBLE_MESSAGES} earlier messages hidden for performance)`,
+      timestamp: new Date(0), // Use epoch time for consistent sorting
+    };
+    
+    return [truncationMessage, ...truncatedMessages];
+  }, [messages]);
+
+  // Stable message rendering with React.memo optimization
+  const MemoizedMessage = React.memo(({ message, index }: { message: ChatMessage; index: number }) => {
+    return renderMessage(message, index);
+  }, (prevProps, nextProps) => {
+    // Only re-render if the message content actually changed
+    const prevMsg = prevProps.message;
+    const nextMsg = nextProps.message;
+    
+    return (
+      prevMsg.content === nextMsg.content &&
+      prevMsg.isStreaming === nextMsg.isStreaming &&
+      prevMsg.type === nextMsg.type &&
+      prevMsg.timestamp.getTime() === nextMsg.timestamp.getTime() &&
+      JSON.stringify(prevMsg.toolCalls) === JSON.stringify(nextMsg.toolCalls)
+    );
+  });
 
   // If settings menu is active, show it instead of the chat
   if (showSettings) {
@@ -461,9 +521,13 @@ The chat history is automatically saved and will persist between sessions.`,
           <Text dimColor>Press 's' to stop operation, ESC to cancel, Ctrl+P to switch provider/model, 'exit' or Ctrl+C to quit</Text>
         </Box>
 
-        {/* Messages */}
-        <Box flexDirection="column" marginBottom={1} width="100%">
-          {messages.map(renderMessage)}
+        {/* Messages with scroll container */}
+        <Box flexDirection="column" marginBottom={1} width="100%" flexGrow={1}>
+          <ScrollContainer autoScroll={true} maxHeight={25}>
+            {visibleMessages.map((message, index) => (
+              <MemoizedMessage key={`msg-${index}-${message.timestamp.getTime()}`} message={message} index={index} />
+            ))}
+          </ScrollContainer>
         </Box>
 
         {/* Input */}
